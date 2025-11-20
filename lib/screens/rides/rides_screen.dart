@@ -50,13 +50,13 @@ class _RidesScreenState extends State<RidesScreen>
         final allRides = ridesResponse.data!;
 
         setState(() {
-          _upcomingRides = allRides.where((ride) => 
+          _upcomingRides = allRides.rides.where((ride) => 
               ride.status == RideStatus.pending ||
               ride.status == RideStatus.driverAssigned ||
               ride.status == RideStatus.driverArriving ||
               ride.status == RideStatus.inProgress).toList();
 
-          _pastRides = allRides.where((ride) =>
+          _pastRides = allRides.rides.where((ride) =>
               ride.status == RideStatus.completed ||
               ride.status == RideStatus.cancelled).toList();
 

@@ -98,23 +98,25 @@ class AuthService {
   }
 
   /// Update user profile with text fields only
-  /// Django endpoint: PUT /api/auth/profile/update/
+  /// Django endpoint: PATCH /api/auth/profile/update/
+  /// NOTE: Uses multipart/form-data because Django view is configured for it
   Future<ApiResponse<User>> updateProfile({
     String? firstName,
     String? lastName,
     String? email,
   }) async {
     try {
-      final data = <String, dynamic>{};
-      if (firstName != null) data['first_name'] = firstName;
-      if (lastName != null) data['last_name'] = lastName;
-      if (email != null) data['email'] = email;
+      final fields = <String, String>{};
+      if (firstName != null) fields['first_name'] = firstName;
+      if (lastName != null) fields['last_name'] = lastName;
+      if (email != null) fields['email'] = email;
 
-      debugPrint('📝 Updating profile: $data');
+      debugPrint('📝 Updating profile: $fields');
 
-      return await _apiClient.put<User>(
+      return await _apiClient.patchMultipart<User>(
         '/auth/profile/update/',
-        data,
+        fields,
+        {}, // Empty files map
         fromJson: (json) => User.fromJson(json),
       );
     } catch (e) {
@@ -181,16 +183,37 @@ class AuthService {
     return await _apiClient.isLoggedIn();
   }
 
-  /// Logout user by clearing local tokens
-  Future<void> logout() async {
-    debugPrint('🚪 Logging out...');
-    await _apiClient.clearTokens();
-    debugPrint('✅ Logged out successfully');
+  /// Logout user - calls backend and clears local tokens
+  /// Django endpoint: POST /api/auth/logout/
+  Future<ApiResponse<void>> logout() async {
+    try {
+      debugPrint('🚪 Logging out...');
+      
+      // Call backend logout endpoint
+      try {
+        await _apiClient.post<Map<String, dynamic>>(
+          '/auth/logout/',
+          {},
+          fromJson: (json) => json as Map<String, dynamic>,
+        );
+      } catch (e) {
+        debugPrint('⚠️ Backend logout call failed (continuing with local logout): $e');
+      }
+      
+      // Clear local tokens
+      await _apiClient.clearTokens();
+      debugPrint('✅ Logged out successfully');
+      
+      return ApiResponse.success(null);
+    } catch (e) {
+      debugPrint('❌ Logout Error: $e');
+      return ApiResponse.error('Failed to logout: ${e.toString()}');
+    }
   }
 
   /// Delete user account permanently
   /// Django endpoint: DELETE /api/auth/delete-account/
-  Future<ApiResponse<Map<String, dynamic>>> deleteAccount() async {
+  Future<ApiResponse<void>> deleteAccount() async {
     try {
       debugPrint('🗑️ Deleting account...');
       
@@ -202,9 +225,13 @@ class AuthService {
       if (response.isSuccess) {
         // Clear tokens after successful deletion
         await logout();
+        return ApiResponse.success(null);
       }
 
-      return response;
+      return ApiResponse.error(
+        response.error ?? 'Failed to delete account',
+        statusCode: response.statusCode,
+      );
     } catch (e) {
       debugPrint('❌ Delete Account Error: $e');
       return ApiResponse.error('Failed to delete account: ${e.toString()}');

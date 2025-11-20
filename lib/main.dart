@@ -10,7 +10,7 @@ void main() async {
   material.WidgetsFlutterBinding.ensureInitialized();
 
   // Lock orientation to portrait only
-  await SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([ 
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);

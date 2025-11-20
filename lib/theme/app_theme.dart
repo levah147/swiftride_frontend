@@ -138,7 +138,7 @@ class AppTheme {
     ),
     
     // Bottom Navigation Bar
-    bottomNavigationBarTheme: const BottomNavigationBarTheme(
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Color(0xFFFFFFFF),
       selectedItemColor: Color(0xFF0066FF),
       unselectedItemColor: Color(0xFF999999),
@@ -310,7 +310,7 @@ class AppTheme {
     ),
     
     // Bottom Navigation Bar
-    bottomNavigationBarTheme: const BottomNavigationBarTheme(
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Color(0xFF1A1A1A),
       selectedItemColor: Color(0xFF0066FF),
       unselectedItemColor: Color(0xFF666666),

@@ -8,10 +8,11 @@ import '../../routes/app_routes.dart';
 import '../../services/driver_service.dart';
 import '../main/home_screen.dart';
 import '../rides/rides_screen.dart';
-import '../account/account_screen.dart';
+import '../../presentation/screens/account/account_screen.dart';
+
 import '../drivers/driver_earnings_screen.dart';
 import '../drivers/driver_rides_screen.dart';
-import '../drivers/driver_profile_screen.dart';
+// import '../drivers/driver_profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -42,30 +43,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   // CHECK USER ROLE (RIDER OR DRIVER)
   // ============================================
 
-  Future<void> _checkUserRole() async {
-    try {
-      final response = await _driverService.getDriverStatus();
+//
+Future<void> _checkUserRole() async {
+  try {
+    final response = await _driverService.getDriverStatus();
+    
+    if (!mounted) return;
+    
+    if (response.isSuccess && response.data != null) {
+      final data = response.data as Map<String, dynamic>;
       
-      if (!mounted) return;
+      // Check if user is a driver
+      if (data.containsKey('is_driver') && data['is_driver'] == false) {
+        // User is not a driver
+        setState(() {
+          _isDriver = false;
+          _isApproved = false;
+          _isLoading = false;
+          _initializeRiderScreens();
+        });
+        return;
+      }
       
-      if (response.isSuccess && response.data != null) {
-        final data = response.data as Map<String, dynamic>;
+      // ✅ FIX: Check for status INSIDE the 'driver' object
+      if (data.containsKey('driver') && data['driver'] != null) {
+        final driverData = data['driver'] as Map<String, dynamic>;
         
-        // Check if user is a driver
-        if (data.containsKey('is_driver') && data['is_driver'] == false) {
-          // User is not a driver
-          setState(() {
-            _isDriver = false;
-            _isApproved = false;
-            _isLoading = false;
-            _initializeRiderScreens();
-          });
-          return;
-        }
-        
-        // User is a driver - check if approved
-        if (data.containsKey('status')) {
-          final status = data['status'] as String;
+        if (driverData.containsKey('status')) {
+          final status = driverData['status'] as String;
           final isApproved = status.toLowerCase() == 'approved';
           
           setState(() {
@@ -79,17 +84,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           if (isApproved) {
             _showApprovalModal();
           }
+          return;
         }
-      } else {
-        setState(() {
-          _isDriver = false;
-          _isApproved = false;
-          _isLoading = false;
-          _initializeRiderScreens();
-        });
       }
-    } catch (e) {
-      debugPrint('Error checking user role: $e');
+      
+      // If we get here, treat as non-driver
+      setState(() {
+        _isDriver = false;
+        _isApproved = false;
+        _isLoading = false;
+        _initializeRiderScreens();
+      });
+    } else {
       setState(() {
         _isDriver = false;
         _isApproved = false;
@@ -97,7 +103,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         _initializeRiderScreens();
       });
     }
+  } catch (e) {
+    debugPrint('Error checking user role: $e');
+    setState(() {
+      _isDriver = false;
+      _isApproved = false;
+      _isLoading = false;
+      _initializeRiderScreens();
+    });
   }
+}
 
   // ============================================
   // INITIALIZE SCREENS
@@ -115,7 +130,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _screens = [
       const DriverEarningsScreen(),
       const DriverRidesScreen(),
-      DriverProfileScreen(onNavigate: _handleNavigation),
+      // DriverProfileScreen(onNavigate: _handleNavigation),
+      AccountScreen(onNavigate: _handleNavigation), // ✅ UNIFIED
     ];
     _currentIndex = 0;
   }

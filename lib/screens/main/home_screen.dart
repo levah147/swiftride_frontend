@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       // ✅ CALL BACKEND API
       final response = await _apiClient.get<List<dynamic>>(
-        '/vehicles/types/',
+        '/pricing/types/',
         queryParams: {
           'city': _currentCity,
           if (_currentPosition != null) ...{
@@ -776,7 +776,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        vehicle.formattedBasePrice,
+                        vehicle.formattedBaseFare,
                         style: TextStyle(
                           color: isSelected ? vehicle.color : AppColors.textSecondary,
                           fontSize: 11,
