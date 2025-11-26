@@ -17,6 +17,10 @@ import '../presentation/screens/support/create_ticket_screen.dart';
 import '../presentation/screens/support/my_tickets_screen.dart';
 import '../presentation/screens/support/ticket_detail_screen.dart';
 import '../presentation/screens/support/faq_screen.dart';
+
+// Settings imports
+import '../presentation/screens/settings/language_selector_screen.dart';
+
 import 'route_arguments.dart';
 
 class AppRoutes {
@@ -62,6 +66,9 @@ class AppRoutes {
     support: (context) => const SupportHomeScreen(),
     myTickets: (context) => const MyTicketsScreen(),
     faq: (context) => const FAQScreen(),
+    
+    // Settings screens
+    language: (context) => const LanguageSelectorScreen(),
   };
 
   // Handle routes with arguments

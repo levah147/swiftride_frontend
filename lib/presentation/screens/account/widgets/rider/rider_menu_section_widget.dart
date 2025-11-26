@@ -133,14 +133,18 @@ class RiderMenuSectionWidget extends StatelessWidget {
                 textColor: textColor,
                 cardColor: cardColor,
                 subtitleColor: secondaryText,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Language selection coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
+                onTap: () 
+                {
+                  Navigator.pushNamed(context, '/settings/language');
+                }
+                // {
+                //   ScaffoldMessenger.of(context).showSnackBar(
+                //     const SnackBar(
+                //       content: Text('Language selection coming soon'),
+                //       duration: Duration(seconds: 2),
+                //     ),
+                //   );
+                // },
               ),
               MenuItemWidget(
                 icon: Icons.notifications_outlined,

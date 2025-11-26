@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'routes/app_routes.dart';
 import 'theme/app_theme.dart';
 import 'theme/providers/theme_provider.dart' as theme_provider;
+// ✅ NEW: Import LanguageService
+import 'services/language_service.dart';
 
 void main() async {
   // Ensure Flutter bindings are initialized
@@ -15,10 +17,24 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // ✅ NEW: Initialize language service and load saved language
+  final languageService = LanguageService();
+  await languageService.initialize();
+  material.debugPrint('✅ Language service initialized: ${languageService.getCurrentLanguage().name}');
+
   material.runApp(
-    // Wrap app with ChangeNotifierProvider for theme management
-    ChangeNotifierProvider(
-      create: (_) => theme_provider.ThemeProvider(),
+    // Wrap app with MultiProvider for both theme and language management
+    MultiProvider(
+      providers: [
+        // Theme provider
+        ChangeNotifierProvider(
+          create: (_) => theme_provider.ThemeProvider(),
+        ),
+        // ✅ NEW: Language provider
+        ChangeNotifierProvider.value(
+          value: languageService,
+        ),
+      ],
       child: const SwiftRideApp(),
     ),
   );
@@ -32,6 +48,9 @@ class SwiftRideApp extends material.StatelessWidget {
     // Listen to theme changes
     final themeProvider = Provider.of<theme_provider.ThemeProvider>(context);
     
+    // ✅ NEW: Listen to language changes
+    final languageService = Provider.of<LanguageService>(context);
+    
     // Update system UI when theme changes
     _updateSystemUI(themeProvider.isDarkMode);
 
@@ -41,6 +60,12 @@ class SwiftRideApp extends material.StatelessWidget {
       
       // Set initial route
       initialRoute: AppRoutes.splash,
+      
+      // ✅ NEW: Language configuration
+      locale: languageService.currentLocale,
+      supportedLocales: LanguageService.supportedLanguages
+          .map((lang) => lang.locale)
+          .toList(),
       
       // Theme configuration - switches between light and dark
       theme: AppTheme.lightTheme,
