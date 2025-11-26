@@ -1,0 +1,442 @@
+/// App Translations - Simple translation system
+/// 
+/// FILE LOCATION: lib/l10n/app_translations.dart
+/// 
+/// This is a simple, lightweight translation system.
+/// You can expand this or replace with flutter_localizations later.
+/// 
+/// Usage:
+///   AppTranslations.of(context).home
+///   or
+///   'home'.tr()  // Using extension
+class AppTranslations {
+  final String languageCode;
+
+  AppTranslations(this.languageCode);
+
+  // Singleton instance
+  static AppTranslations? _instance;
+  
+  static AppTranslations of(String languageCode) {
+    _instance ??= AppTranslations(languageCode);
+    if (_instance!.languageCode != languageCode) {
+      _instance = AppTranslations(languageCode);
+    }
+    return _instance!;
+  }
+
+  // Translation maps for each language
+  static const Map<String, Map<String, String>> _translations = {
+    'en': _englishTranslations,
+    'ha': _hausaTranslations,
+    'yo': _yorubaTranslations,
+    'ig': _igboTranslations,
+    'pcm': _pidginTranslations,
+  };
+
+  /// Get translated string
+  String translate(String key) {
+    final languageMap = _translations[languageCode] ?? _translations['en']!;
+    return languageMap[key] ?? key;
+  }
+
+  // Quick access properties (expand as needed)
+  String get appName => translate('app_name');
+  String get home => translate('home');
+  String get rides => translate('rides');
+  String get account => translate('account');
+  String get settings => translate('settings');
+  String get logout => translate('logout');
+  String get language => translate('language');
+  String get support => translate('support');
+  String get promotions => translate('promotions');
+  String get wallet => translate('wallet');
+  String get profile => translate('profile');
+  String get bookRide => translate('book_ride');
+  String get whereToGo => translate('where_to_go');
+  String get confirm => translate('confirm');
+  String get cancel => translate('cancel');
+  String get loading => translate('loading');
+  String get error => translate('error');
+  String get success => translate('success');
+}
+
+// ============================================
+// ENGLISH TRANSLATIONS
+// ============================================
+const Map<String, String> _englishTranslations = {
+  'app_name': 'SwiftRide',
+  'home': 'Home',
+  'rides': 'Rides',
+  'account': 'Account',
+  'settings': 'Settings',
+  'logout': 'Logout',
+  'language': 'Language',
+  'support': 'Support',
+  'promotions': 'Promotions',
+  'wallet': 'Wallet',
+  'profile': 'Profile',
+  'book_ride': 'Book a Ride',
+  'where_to_go': 'Where would you like to go?',
+  'confirm': 'Confirm',
+  'cancel': 'Cancel',
+  'loading': 'Loading...',
+  'error': 'Error',
+  'success': 'Success',
+  'welcome': 'Welcome',
+  'get_started': 'Get Started',
+  'login': 'Login',
+  'signup': 'Sign Up',
+  'phone_number': 'Phone Number',
+  'password': 'Password',
+  'forgot_password': 'Forgot Password?',
+  'dont_have_account': 'Don\'t have an account?',
+  'already_have_account': 'Already have an account?',
+  'enter_phone': 'Enter your phone number',
+  'enter_password': 'Enter your password',
+  'destination': 'Destination',
+  'pickup': 'Pickup',
+  'search_destination': 'Search for destination',
+  'recent_places': 'Recent Places',
+  'saved_places': 'Saved Places',
+  'ride_type': 'Ride Type',
+  'standard': 'Standard',
+  'premium': 'Premium',
+  'luxury': 'Luxury',
+  'fare': 'Fare',
+  'estimated_time': 'Estimated Time',
+  'distance': 'Distance',
+  'driver_details': 'Driver Details',
+  'rating': 'Rating',
+  'trips': 'Trips',
+  'years_experience': 'Years Experience',
+  'vehicle': 'Vehicle',
+  'plate_number': 'Plate Number',
+  'arrival_time': 'Arrival Time',
+  'finding_driver': 'Finding driver...',
+  'driver_on_way': 'Driver is on the way',
+  'arrived': 'Driver has arrived',
+  'trip_started': 'Trip started',
+  'trip_completed': 'Trip completed',
+  'rate_driver': 'Rate your driver',
+  'payment_method': 'Payment Method',
+  'cash': 'Cash',
+  'card': 'Card',
+  'total_fare': 'Total Fare',
+  'promo_code': 'Promo Code',
+  'apply': 'Apply',
+  'my_trips': 'My Trips',
+  'ongoing': 'Ongoing',
+  'completed': 'Completed',
+  'cancelled': 'Cancelled',
+  'help_support': 'Help & Support',
+  'contact_us': 'Contact Us',
+  'about': 'About',
+  'terms_conditions': 'Terms & Conditions',
+  'privacy_policy': 'Privacy Policy',
+  'version': 'Version',
+};
+
+// ============================================
+// HAUSA TRANSLATIONS
+// ============================================
+const Map<String, String> _hausaTranslations = {
+  'app_name': 'SwiftRide',
+  'home': 'Gida',
+  'rides': 'Tafiye-tafiye',
+  'account': 'Asusu',
+  'settings': 'Saitunan',
+  'logout': 'Fita',
+  'language': 'Harshe',
+  'support': 'Taimako',
+  'promotions': 'Rangwame',
+  'wallet': 'Jakar kuɗi',
+  'profile': 'Bayanin sirri',
+  'book_ride': 'Yi ajiyar tafiya',
+  'where_to_go': 'Ina kake son zuwa?',
+  'confirm': 'Tabbatar',
+  'cancel': 'Soke',
+  'loading': 'Ana lodi...',
+  'error': 'Kuskure',
+  'success': 'Nasara',
+  'welcome': 'Barka da zuwa',
+  'get_started': 'Fara',
+  'login': 'Shiga',
+  'signup': 'Yi rajista',
+  'phone_number': 'Lambar waya',
+  'password': 'Kalmar sirri',
+  'forgot_password': 'Ka manta da kalmar sirri?',
+  'dont_have_account': 'Ba ka da asusu?',
+  'already_have_account': 'Kana da asusu?',
+  'enter_phone': 'Shigar da lambar waya',
+  'enter_password': 'Shigar da kalmar sirri',
+  'destination': 'Inda zaka je',
+  'pickup': 'Inda za a dauko ka',
+  'search_destination': 'Nemo inda zaka je',
+  'recent_places': 'Wuraren da ka je kwanan nan',
+  'saved_places': 'Wuraren da aka adana',
+  'ride_type': 'Nau\'in tafiya',
+  'standard': 'Na yau da kullum',
+  'premium': 'Na musamman',
+  'luxury': 'Na alatu',
+  'fare': 'Kuɗin tafiya',
+  'estimated_time': 'Lokacin da aka kiyasta',
+  'distance': 'Nesa',
+  'driver_details': 'Bayanan direba',
+  'rating': 'Kimanta',
+  'trips': 'Tafiye-tafiye',
+  'years_experience': 'Shekarun kwarewa',
+  'vehicle': 'Mota',
+  'plate_number': 'Lambar mota',
+  'arrival_time': 'Lokacin isowa',
+  'finding_driver': 'Ana neman direba...',
+  'driver_on_way': 'Direba yana kan hanya',
+  'arrived': 'Direba ya isa',
+  'trip_started': 'An fara tafiya',
+  'trip_completed': 'An kammala tafiya',
+  'rate_driver': 'Ka kimanta direba',
+  'payment_method': 'Hanyar biyan kuɗi',
+  'cash': 'Kuɗi tsantsa',
+  'card': 'Kati',
+  'total_fare': 'Jimlar kuɗin tafiya',
+  'promo_code': 'Lambar rangwame',
+  'apply': 'Yi amfani',
+  'my_trips': 'Tafiye-tafiyena',
+  'ongoing': 'Ana ci gaba',
+  'completed': 'An kammala',
+  'cancelled': 'An soke',
+  'help_support': 'Taimako da goyon baya',
+  'contact_us': 'Tuntube mu',
+  'about': 'Game da mu',
+  'terms_conditions': 'Sharuɗɗa',
+  'privacy_policy': 'Manufar sirri',
+  'version': 'Sigar',
+};
+
+// ============================================
+// YORUBA TRANSLATIONS
+// ============================================
+const Map<String, String> _yorubaTranslations = {
+  'app_name': 'SwiftRide',
+  'home': 'Ilé',
+  'rides': 'Àwọn ìrìn àjò',
+  'account': 'Àkọọlẹ̀',
+  'settings': 'Àwọn ètò',
+  'logout': 'Jáde',
+  'language': 'Èdè',
+  'support': 'Ìrànlọ́wọ́',
+  'promotions': 'Ìpolongo',
+  'wallet': 'Àpò owó',
+  'profile': 'Àkọọlẹ̀ ara ẹni',
+  'book_ride': 'Ṣe ìdábòò ìrìn àjò',
+  'where_to_go': 'Níbo ni o fẹ́ lọ?',
+  'confirm': 'Jẹ́ríì',
+  'cancel': 'Pa rẹ́',
+  'loading': 'Ń gbàlódé...',
+  'error': 'Àṣìṣe',
+  'success': 'Àṣeyọrí',
+  'welcome': 'Ẹ káàbọ̀',
+  'get_started': 'Bẹ̀rẹ̀',
+  'login': 'Wọlé',
+  'signup': 'Forúkọ sílẹ̀',
+  'phone_number': 'Nọ́mbà fóònù',
+  'password': 'Ọ̀rọ̀ ìpamọ́',
+  'forgot_password': 'Ṣé o gbàgbé ọ̀rọ̀ ìpamọ́?',
+  'dont_have_account': 'Ṣé o kò ní àkọọlẹ̀?',
+  'already_have_account': 'Ṣé o ní àkọọlẹ̀?',
+  'enter_phone': 'Tẹ nọ́mbà fóònù rẹ',
+  'enter_password': 'Tẹ ọ̀rọ̀ ìpamọ́ rẹ',
+  'destination': 'Ìbi tí o ń lọ',
+  'pickup': 'Ìbi tí a yóò gbé ọ',
+  'search_destination': 'Wá ìbi tí o ń lọ',
+  'recent_places': 'Àwọn ìbì láìpẹ́',
+  'saved_places': 'Àwọn ìbì tí a fi pamọ́',
+  'ride_type': 'Irú ìrìn àjò',
+  'standard': 'Àṣà',
+  'premium': 'Pàtàkì',
+  'luxury': 'Àlùfáà',
+  'fare': 'Owó ìrìn àjò',
+  'estimated_time': 'Àkókò tí a ṣe ìṣirò',
+  'distance': 'Ìjìnnà',
+  'driver_details': 'Àlàyé awakọ̀',
+  'rating': 'Ìgbéga',
+  'trips': 'Àwọn ìrìn àjò',
+  'years_experience': 'Àwọn ọdún ìmọ̀',
+  'vehicle': 'Ọkọ̀',
+  'plate_number': 'Nọ́mbà àwọ ọkọ̀',
+  'arrival_time': 'Àkókò ìdé',
+  'finding_driver': 'Ń wá awakọ̀...',
+  'driver_on_way': 'Awakọ̀ ń bọ̀',
+  'arrived': 'Awakọ̀ ti dé',
+  'trip_started': 'Ìrìn àjò ti bẹ̀rẹ̀',
+  'trip_completed': 'Ìrìn àjò ti parí',
+  'rate_driver': 'Ṣe ìgbéga awakọ̀ rẹ',
+  'payment_method': 'Ọ̀nà ìsanwó',
+  'cash': 'Owó lọ́wọ́',
+  'card': 'Káàdì',
+  'total_fare': 'Àpapọ̀ owó ìrìn àjò',
+  'promo_code': 'Kóòdù ìpolongo',
+  'apply': 'Lo',
+  'my_trips': 'Àwọn ìrìn àjò mi',
+  'ongoing': 'Ń lọ lọ́wọ́',
+  'completed': 'Ti parí',
+  'cancelled': 'Ti pa rẹ́',
+  'help_support': 'Ìrànlọ́wọ́ àti Ìtìlẹyìn',
+  'contact_us': 'Kàn sí wa',
+  'about': 'Nípa wa',
+  'terms_conditions': 'Àwọn òfin',
+  'privacy_policy': 'Ìlànà ìkọ̀kọ̀',
+  'version': 'Ẹ̀yà',
+};
+
+// ============================================
+// IGBO TRANSLATIONS
+// ============================================
+const Map<String, String> _igboTranslations = {
+  'app_name': 'SwiftRide',
+  'home': 'Ụlọ',
+  'rides': 'Njem',
+  'account': 'Akaụntụ',
+  'settings': 'Ntọala',
+  'logout': 'Pụọ',
+  'language': 'Asụsụ',
+  'support': 'Nkwado',
+  'promotions': 'Nkwalite',
+  'wallet': 'Obere akpa ego',
+  'profile': 'Profaịlụ',
+  'book_ride': 'Debe njem',
+  'where_to_go': 'Ebee ka ị chọrọ ịga?',
+  'confirm': 'Kwenye',
+  'cancel': 'Kagbuo',
+  'loading': 'Na-ebu...',
+  'error': 'Njehie',
+  'success': 'Ihe ịga nke ọma',
+  'welcome': 'Nnọọ',
+  'get_started': 'Malite',
+  'login': 'Banye',
+  'signup': 'Debanye aha',
+  'phone_number': 'Nọmba ekwentị',
+  'password': 'Okwuntughe',
+  'forgot_password': 'Ị chefuru okwuntughe?',
+  'dont_have_account': 'Ị nweghị akaụntụ?',
+  'already_have_account': 'Ị nwere akaụntụ?',
+  'enter_phone': 'Tinye nọmba ekwentị gị',
+  'enter_password': 'Tinye okwuntughe gị',
+  'destination': 'Ebe ị na-aga',
+  'pickup': 'Ebe a ga-eburu gị',
+  'search_destination': 'Chọọ ebe ị na-aga',
+  'recent_places': 'Ebe ndị na-adịbeghị anya',
+  'saved_places': 'Ebe ndị echekwara',
+  'ride_type': 'Ụdị njem',
+  'standard': 'Ọkọlọtọ',
+  'premium': 'Pụrụ iche',
+  'luxury': 'Oké ọnụ ahịa',
+  'fare': 'Ego njem',
+  'estimated_time': 'Oge a tụrụ anya',
+  'distance': 'Anya dị anya',
+  'driver_details': 'Nkọwa ọkwọ ụgbọala',
+  'rating': 'Ọkwa',
+  'trips': 'Njem',
+  'years_experience': 'Afọ ahụmahụ',
+  'vehicle': 'Ụgbọala',
+  'plate_number': 'Nọmba efere',
+  'arrival_time': 'Oge mbata',
+  'finding_driver': 'Na-achọ ọkwọ ụgbọala...',
+  'driver_on_way': 'Ọkwọ ụgbọala na-abịa',
+  'arrived': 'Ọkwọ ụgbọala abịala',
+  'trip_started': 'Njem amalitela',
+  'trip_completed': 'Njem agwụla',
+  'rate_driver': 'Nye ọkwọ ụgbọala gị ọkwa',
+  'payment_method': 'Ụzọ ịkwụ ụgwọ',
+  'cash': 'Ego',
+  'card': 'Kaadị',
+  'total_fare': 'Ego njem niile',
+  'promo_code': 'Koodu nkwalite',
+  'apply': 'Tinye',
+  'my_trips': 'Njem m',
+  'ongoing': 'Na-aga n\'ihu',
+  'completed': 'Emechara',
+  'cancelled': 'Kagburu',
+  'help_support': 'Enyemaka na Nkwado',
+  'contact_us': 'Kpọtụrụ anyị',
+  'about': 'Gbasara anyị',
+  'terms_conditions': 'Usoro na ọnọdụ',
+  'privacy_policy': 'Iwu nzuzo',
+  'version': 'Ụdị',
+};
+
+// ============================================
+// NIGERIAN PIDGIN TRANSLATIONS
+// ============================================
+const Map<String, String> _pidginTranslations = {
+  'app_name': 'SwiftRide',
+  'home': 'House',
+  'rides': 'Rides',
+  'account': 'Account',
+  'settings': 'Settings',
+  'logout': 'Comot',
+  'language': 'Language',
+  'support': 'Help',
+  'promotions': 'Promo',
+  'wallet': 'Wallet',
+  'profile': 'Profile',
+  'book_ride': 'Book ride',
+  'where_to_go': 'Where you wan go?',
+  'confirm': 'Confirm',
+  'cancel': 'Cancel',
+  'loading': 'Dey load...',
+  'error': 'Error',
+  'success': 'E work!',
+  'welcome': 'Welcome',
+  'get_started': 'Make we start',
+  'login': 'Enter',
+  'signup': 'Register',
+  'phone_number': 'Phone number',
+  'password': 'Password',
+  'forgot_password': 'You forget password?',
+  'dont_have_account': 'You no get account?',
+  'already_have_account': 'You don get account?',
+  'enter_phone': 'Put your phone number',
+  'enter_password': 'Put your password',
+  'destination': 'Where you dey go',
+  'pickup': 'Where we go carry you',
+  'search_destination': 'Find where you dey go',
+  'recent_places': 'Where you don go before',
+  'saved_places': 'Places wey you save',
+  'ride_type': 'Type of ride',
+  'standard': 'Normal',
+  'premium': 'Better one',
+  'luxury': 'Sharp sharp',
+  'fare': 'Money for ride',
+  'estimated_time': 'Time e go take',
+  'distance': 'How far',
+  'driver_details': 'Driver info',
+  'rating': 'Rating',
+  'trips': 'Trips',
+  'years_experience': 'Years of experience',
+  'vehicle': 'Motor',
+  'plate_number': 'Plate number',
+  'arrival_time': 'Time wey e go reach',
+  'finding_driver': 'We dey find driver...',
+  'driver_on_way': 'Driver dey come',
+  'arrived': 'Driver don reach',
+  'trip_started': 'Trip don start',
+  'trip_completed': 'Trip don finish',
+  'rate_driver': 'Rate your driver',
+  'payment_method': 'How you wan pay',
+  'cash': 'Cash',
+  'card': 'Card',
+  'total_fare': 'Total money',
+  'promo_code': 'Promo code',
+  'apply': 'Use am',
+  'my_trips': 'My trips',
+  'ongoing': 'Dey happen now',
+  'completed': 'Don finish',
+  'cancelled': 'Cancel',
+  'help_support': 'Help & Support',
+  'contact_us': 'Talk to us',
+  'about': 'About us',
+  'terms_conditions': 'Rules',
+  'privacy_policy': 'Privacy',
+  'version': 'Version',
+};
