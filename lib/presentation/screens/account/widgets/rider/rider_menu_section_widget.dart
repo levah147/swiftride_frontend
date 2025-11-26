@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swiftride/presentation/screens/support/support_home_screen.dart';
 import '../../../../../constants/app_strings.dart';
 import '../../../../../constants/app_dimensions.dart';
 import '../../../../../widgets/common/menu_section_widget.dart';
@@ -54,12 +55,7 @@ class RiderMenuSectionWidget extends StatelessWidget {
                 textColor: textColor,
                 cardColor: cardColor,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Promotions feature coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/promotions');
                 },
               ),
               MenuItemWidget(
@@ -98,12 +94,14 @@ class RiderMenuSectionWidget extends StatelessWidget {
                 textColor: textColor,
                 cardColor: cardColor,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Support feature coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  // ScaffoldMessenger.of(context).showSnackBar(
+                  //   const SnackBar(
+                  //     content: Text('Support feature coming soon'),
+                  //     duration: Duration(seconds: 2),
+                  //   ),
+                  // );
+
+                  Navigator.pushNamed(context, '/support');
                 },
               ),
               MenuItemWidget(

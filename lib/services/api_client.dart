@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiClient {
   // ⚙️ CHANGE THIS TO YOUR BACKEND IP
-  static const String baseUrl = 'http://192.168.206.65:8000/api';
+  static const String baseUrl = 'http://192.168.212.65:8000/api';
   
   static ApiClient? _instance;
   

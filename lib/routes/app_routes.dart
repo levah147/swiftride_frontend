@@ -7,6 +7,16 @@ import '../screens/rides_booking/ride_options_screen.dart';
 import '../screens/rides_booking/driver_matching_screen.dart';
 import '../screens/rides_booking/ride_tracking_screen.dart';
 import '../screens/rides_booking/ride_completion_screen.dart';
+// Promotions imports
+import '../presentation/screens/promotions/promotions_home_screen.dart';
+import '../presentation/screens/promotions/referral_screen.dart';
+import '../presentation/screens/promotions/loyalty_screen.dart';
+// Support imports
+import '../presentation/screens/support/support_home_screen.dart';
+import '../presentation/screens/support/create_ticket_screen.dart';
+import '../presentation/screens/support/my_tickets_screen.dart';
+import '../presentation/screens/support/ticket_detail_screen.dart';
+import '../presentation/screens/support/faq_screen.dart';
 import 'route_arguments.dart';
 
 class AppRoutes {
@@ -21,12 +31,37 @@ class AppRoutes {
   static const String driverMatching = '/driver-matching';
   static const String rideTracking = '/ride-tracking';
   static const String rideCompletion = '/ride-completion';
+  
+  // Promotions routes
+  static const String promotions = '/promotions';
+  static const String referral = '/promotions/referral';
+  static const String loyalty = '/promotions/loyalty';
+  
+  // Support routes
+  static const String support = '/support';
+  static const String createTicket = '/support/create-ticket';
+  static const String myTickets = '/support/tickets';
+  static const String ticketDetail = '/support/ticket-detail';
+  static const String faq = '/support/faq';
+  
+  static const String language = '/settings/language';
 
+  
   // Define all named routes
   static final Map<String, WidgetBuilder> routes = {
     splash: (context) => const SplashScreen(),
     auth: (context) => const AuthScreen(),
     home: (context) => const MainNavigationScreen(),
+    
+    // Promotions screens
+    promotions: (context) => const PromotionsHomeScreen(),
+    referral: (context) => const ReferralScreen(),
+    loyalty: (context) => const LoyaltyScreen(),
+    
+    // Support screens (without arguments)
+    support: (context) => const SupportHomeScreen(),
+    myTickets: (context) => const MyTicketsScreen(),
+    faq: (context) => const FAQScreen(),
   };
 
   // Handle routes with arguments
@@ -91,6 +126,31 @@ class AppRoutes {
               driver: args.driver,
               duration: args.duration,
               distance: args.distance,
+            ),
+            settings: settings,
+          );
+        }
+        break;
+
+      // Support routes with arguments
+      case createTicket:
+        // Arguments are optional - can pass category to pre-select it
+        final category = args != null && args is Map<String, dynamic>
+            ? args['category'] as int?
+            : null;
+        return MaterialPageRoute(
+          builder: (context) => CreateTicketScreen(
+          initialCategory: args as Map<String, dynamic>?,  // ✅ CORRECT TYPE
+          ),
+          settings: settings,
+        );
+
+      case ticketDetail:
+        // Arguments are required - must pass ticketId
+        if (args is Map<String, dynamic> && args.containsKey('ticketId')) {
+          return MaterialPageRoute(
+            builder: (context) => TicketDetailScreen(
+              ticketId: args['ticketId'] as int,
             ),
             settings: settings,
           );
