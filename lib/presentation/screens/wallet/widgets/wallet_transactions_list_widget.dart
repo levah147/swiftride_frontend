@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../services/wallet_service.dart';
+import '../../../../services/payment_service.dart';
 import '../../../../constants/colors.dart';
+import '../../wallet/widgets/transaction_detail_screen.dart';
 
 /// Production-Ready Wallet Transactions List Widget
 /// Features:
@@ -10,6 +11,8 @@ import '../../../../constants/colors.dart';
 /// - Empty states with helpful messages
 /// - Smooth animations
 /// - Comprehensive error handling
+/// - Fixed overflow issue with SingleChildScrollView
+/// - Tap to view transaction details
 class WalletTransactionsListWidget extends StatelessWidget {
   final List<Map<String, dynamic>> transactions;
   final String selectedFilter;
@@ -29,33 +32,37 @@ class WalletTransactionsListWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Filter Chips Section
-        if (transactions.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _buildFilterChips(colorScheme),
-          ),
+    return SingleChildScrollView(
+      // ✅ FIXED: Wrap in SingleChildScrollView to prevent overflow
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Filter Chips Section
+          if (transactions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildFilterChips(colorScheme),
+            ),
 
-        // Transactions Header or Loading
-        if (transactions.isNotEmpty && !isLoading)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildTransactionsHeader(colorScheme),
-          ),
+          // Transactions Header or Loading
+          if (transactions.isNotEmpty && !isLoading)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildTransactionsHeader(colorScheme),
+            ),
 
-        // Loading State
-        if (isLoading)
-          _buildLoadingState(colorScheme)
-        // Empty State
-        else if (transactions.isEmpty)
-          _buildEmptyState(colorScheme)
-        // Transactions List
-        else
-          _buildTransactionsList(colorScheme),
-      ],
+          // Loading State
+          if (isLoading)
+            _buildLoadingState(colorScheme)
+          // Empty State
+          else if (transactions.isEmpty)
+            _buildEmptyState(colorScheme)
+          // Transactions List
+          else
+            _buildTransactionsList(context, colorScheme),
+        ],
+      ),
     );
   }
 
@@ -83,8 +90,9 @@ class WalletTransactionsListWidget extends StatelessWidget {
             child: FilterChip(
               label: Text(label),
               selected: isSelected,
-              onSelected: (isSelected) =>
-                  onFilterChanged?.call(value),
+              onSelected: onFilterChanged != null
+                  ? (isSelected) => onFilterChanged?.call(value)
+                  : null,
               backgroundColor: colorScheme.surfaceVariant.withOpacity(0.5),
               selectedColor: AppColors.primary.withOpacity(0.15),
               labelStyle: TextStyle(
@@ -227,13 +235,14 @@ class WalletTransactionsListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionsList(ColorScheme colorScheme) {
+  Widget _buildTransactionsList(BuildContext context, ColorScheme colorScheme) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: transactions.length,
       itemBuilder: (context, index) {
         return _buildTransactionItem(
+          context,
           transactions[index],
           colorScheme,
           index,
@@ -243,6 +252,7 @@ class WalletTransactionsListWidget extends StatelessWidget {
   }
 
   Widget _buildTransactionItem(
+    BuildContext context,
     Map<String, dynamic> transaction,
     ColorScheme colorScheme,
     int index,
@@ -254,7 +264,7 @@ class WalletTransactionsListWidget extends StatelessWidget {
       final description =
           transaction['description'] as String? ?? 'Transaction';
       final createdAtStr = transaction['created_at'] as String?;
-      final isCredit = WalletService.isCredit(type);
+      final isCredit = PaymentService.isCredit(type);
 
       DateTime timestamp;
       try {
@@ -266,105 +276,119 @@ class WalletTransactionsListWidget extends StatelessWidget {
       return AnimatedSlide(
         offset: Offset.zero,
         duration: Duration(milliseconds: 300 + (index * 50)),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: colorScheme.outline.withOpacity(0.2),
+        child: InkWell(
+          // ✅ FIXED: Added InkWell for tap handling
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TransactionDetailScreen(
+                  transaction: transaction,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isCredit
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+            child: Row(
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isCredit
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isCredit
+                        ? Icons.arrow_downward_rounded
+                        : Icons.arrow_upward_rounded,
+                    color: isCredit ? Colors.green : Colors.red,
+                    size: 18,
+                  ),
                 ),
-                child: Icon(
-                  isCredit
-                      ? Icons.arrow_downward_rounded
-                      : Icons.arrow_upward_rounded,
-                  color: isCredit ? Colors.green : Colors.red,
-                  size: 18,
+
+                const SizedBox(width: 12),
+
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        PaymentService.formatTransactionType(type),
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDateTime(timestamp),
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(width: 12),
-
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Amount
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      WalletService.formatTransactionType(type),
+                      '${isCredit ? '+' : '-'}${PaymentService.formatCurrency(amount)}',
                       style: TextStyle(
-                        color: colorScheme.onSurface,
+                        color: isCredit ? Colors.green : Colors.red,
                         fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _formatDateTime(timestamp),
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (isCredit ? Colors.green : Colors.red)
+                            .withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isCredit ? 'Credit' : 'Debit',
+                        style: TextStyle(
+                          color: isCredit ? Colors.green : Colors.red,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              // Amount
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${isCredit ? '+' : '-'}${WalletService.formatCurrency(amount)}',
-                    style: TextStyle(
-                      color: isCredit ? Colors.green : Colors.red,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (isCredit ? Colors.green : Colors.red)
-                          .withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      isCredit ? 'Credit' : 'Debit',
-                      style: TextStyle(
-                        color: isCredit ? Colors.green : Colors.red,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

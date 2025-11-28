@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../services/promotions_service.dart';
 import 'package:intl/intl.dart';
 
@@ -717,11 +718,14 @@ class _PromotionsHomeScreenState extends State<PromotionsHomeScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   // Copy code to clipboard
+                  Clipboard.setData(ClipboardData(text: promo['code']));
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Code ${promo['code']} copied!'),
+                      content: Text('Code ${promo['code']} copied to clipboard!'),
+                      backgroundColor: Colors.green,
                       behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 },

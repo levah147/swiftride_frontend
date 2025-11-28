@@ -136,6 +136,42 @@ class PromotionsService {
   // LOYALTY POINTS
   // ============================================
 
+  /// Redeem loyalty points for wallet credit
+  /// 
+  /// Conversion rate: 100 points = ₦10
+  /// 
+  /// Returns updated wallet balance and points
+  Future<ApiResponse<Map<String, dynamic>>> redeemPoints({
+    required int points,
+  }) async {
+    try {
+      debugPrint('💰 Redeeming $points loyalty points...');
+      
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        '/promotions/loyalty/redeem/',
+        {'points': points},
+        fromJson: (json) => json as Map<String, dynamic>,
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!['data'] as Map<String, dynamic>;
+        debugPrint(
+          '✅ Points redeemed! Amount: ₦${data['amount']}, '
+          'New points: ${data['new_available_points']}'
+        );
+        return ApiResponse.success(data);
+      }
+      
+      return ApiResponse.error(
+        response.error ?? 'Failed to redeem points',
+      );
+    } catch (e) {
+      debugPrint('❌ Error redeeming points: $e');
+      return ApiResponse.error('Failed to redeem points: ${e.toString()}');
+    }
+  }
+
+
   /// Get user's loyalty points and tier
   Future<ApiResponse<Map<String, dynamic>>> getMyLoyaltyPoints() async {
     try {

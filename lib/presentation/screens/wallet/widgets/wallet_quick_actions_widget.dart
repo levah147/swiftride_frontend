@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../wallet/widgets/transaction_history_screen.dart';
 
 /// Production-Ready Wallet Quick Actions Widget
 /// Features:
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 /// - Disabled state management
 /// - Smooth animations
 /// - Accessibility labels
+/// - History navigation to dedicated screen
 class WalletQuickActionsWidget extends StatelessWidget {
   final VoidCallback? onTopUp;
   final VoidCallback? onWithdraw;
@@ -35,9 +37,10 @@ class WalletQuickActionsWidget extends StatelessWidget {
           ),
         ),
 
-        // Withdraw Button (drivers only)
-        if (isDriver) ...[
-          const SizedBox(width: 12),
+        const SizedBox(width: 12),
+
+        // Withdraw Button (drivers only) OR History Button (riders only)
+        if (isDriver)
           Expanded(
             child: _buildActionButton(
               context: context,
@@ -48,8 +51,8 @@ class WalletQuickActionsWidget extends StatelessWidget {
               onTap: onWithdraw,
               enabled: onWithdraw != null,
             ),
-          ),
-        ] else
+          )
+        else
           Expanded(
             child: _buildActionButton(
               context: context,
@@ -58,7 +61,12 @@ class WalletQuickActionsWidget extends StatelessWidget {
               subtitle: 'View All',
               color: Colors.blue,
               onTap: () {
-                // Handle view history
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TransactionHistoryScreen(),
+                  ),
+                );
               },
               enabled: true,
             ),

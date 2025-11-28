@@ -75,16 +75,22 @@ class _ReferralScreenState extends State<ReferralScreen> {
   void _shareCode() {
     if (_referralData != null) {
       final code = _referralData!['referral_code'] as String;
+      // Deep link for direct app installation with code
+      final deepLink = 'https://swiftride.app/ref/$code';
       final message = '''
 Hey! 🚗
 
 Join SwiftRide with my referral code and earn rewards!
 
 Code: $code
+Link: $deepLink
 
 Download the app and start saving on rides today!
+
+📱 iOS: https://apps.apple.com/app/swiftride
+📱 Android: https://play.google.com/store/apps/details?id=com.swiftride
 ''';
-      Share.share(message, subject: 'Join SwiftRide!');
+      Share.share(message, subject: 'Join SwiftRide and Get Rewards! 🎁');
     }
   }
 

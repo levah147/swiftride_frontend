@@ -11,11 +11,12 @@ import 'widgets/dialogs/paystack_webview_screen.dart';
 /// Production-Ready Wallet Screen
 /// Features:
 /// - Complete Paystack integration with payment flow
-/// - Comprehensive error handling
+/// - Withdrawal functionality for drivers
+/// - Transaction history with filtering  
+/// - Comprehensive error handling with detailed logging
 /// - Loading states and user feedback
 /// - Proper null safety and validation
 /// - Rate limiting for API calls
-/// - Transaction history with filtering
 class WalletScreen extends StatefulWidget {
   final bool isDriver;
 
@@ -183,7 +184,9 @@ class _WalletScreenState extends State<WalletScreen> {
       return;
     }
 
-    // Dismiss the dialog
+    debugPrint('💳 Initiating payment flow for ₦${amount.toStringAsFixed(2)}');
+
+    // Dismiss the top-up dialog
     Navigator.of(context).pop();
     
     // Show payment method selection
@@ -192,6 +195,7 @@ class _WalletScreenState extends State<WalletScreen> {
       builder: (context) => PaymentMethodDialog(
         amount: amount,
         onMethodSelected: (method) {
+          debugPrint('💳 Payment method selected: $method');
           Navigator.pop(context);
           _initializePaystackPayment(amount, method);
         },
@@ -203,32 +207,54 @@ class _WalletScreenState extends State<WalletScreen> {
     double amount,
     String paymentMethod,
   ) async {
-    if (!mounted || _isProcessingPayment) return;
+    if (!mounted || _isProcessingPayment) {
+      debugPrint('⚠️ Cannot initialize payment - mounted: $mounted, isProcessing: $_isProcessingPayment');
+      return;
+    }
     
     setState(() => _isProcessingPayment = true);
+    
+    debugPrint('🔄 Showing loading dialog...');
     _showLoadingDialog('Initializing payment...');
     
     try {
+      debugPrint('📡 Calling initialize payment API...');
+      
       final response = await _paymentService.initializePaystackPayment(
         amount: amount,
         paymentMethod: paymentMethod,
       );
       
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      debugPrint('📥 API Response received - Success: ${response.isSuccess}');
+      
+      if (!mounted) {
+        debugPrint('⚠️ Widget unmounted, aborting');
+        return;
+      }
+      
+      // Close loading dialog
+      debugPrint('🔄 Closing loading dialog...');
+      Navigator.of(context).pop();
       
       if (response.isSuccess && response.data != null) {
+        debugPrint('✅ Payment initialization successful');
+        debugPrint('📄 Response data: ${response.data}');
+        
         final data = response.data!;
         final authUrl = data['authorization_url']?.toString();
         final reference = data['reference']?.toString();
         
-        if (authUrl == null || reference == null) {
+        debugPrint('🔗 Authorization URL: $authUrl');
+        debugPrint('🔖 Reference: $reference');
+        
+        if (authUrl == null || reference == null || authUrl.isEmpty || reference.isEmpty) {
+          debugPrint('❌ Invalid payment response - URL or reference missing');
           _showErrorSnackBar('Invalid payment response. Please try again.');
           setState(() => _isProcessingPayment = false);
           return;
         }
         
-        debugPrint('✅ Payment initialized: $reference');
+        debugPrint('🚀 Opening Paystack webview...');
         
         // Navigate to Paystack webview
         final result = await Navigator.push<Map<String, dynamic>>(
@@ -241,22 +267,37 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         );
         
-        if (result?['success'] == true && mounted) {
-          await _verifyPayment(result!['reference'] as String);
-        } else if (mounted) {
+        debugPrint('🔙 Returned from webview with result: $result');
+        
+        if (!mounted) return;
+        
+        if (result?['success'] == true) {
+          final paymentRef = result!['reference'] as String;
+          debugPrint('✅ Payment successful, verifying: $paymentRef');
+          await _verifyPayment(paymentRef);
+        } else {
+          debugPrint('❌ Payment cancelled or failed');
           setState(() => _isProcessingPayment = false);
           _showErrorSnackBar('Payment was cancelled or failed.');
         }
       } else {
-        _showErrorSnackBar(
-          response.error ?? 'Failed to initialize payment. Please try again.',
-        );
+        final error = response.error ?? 'Failed to initialize payment. Please try again.';
+        debugPrint('❌ Payment initialization failed: $error');
+        _showErrorSnackBar(error);
         setState(() => _isProcessingPayment = false);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Payment initialization error: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      
       if (mounted) {
-        debugPrint('❌ Payment initialization error: $e');
-        Navigator.pop(context); // Close loading dialog
+        // Try to close loading dialog if it's still open
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {
+          debugPrint('⚠️ Could not close loading dialog');
+        }
+        
         _showErrorSnackBar('Payment error: ${e.toString()}');
         setState(() => _isProcessingPayment = false);
       }
@@ -266,6 +307,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _verifyPayment(String reference) async {
     if (!mounted) return;
     
+    debugPrint('🔄 Verifying payment: $reference');
     _showLoadingDialog('Verifying payment...');
     
     try {
@@ -334,39 +376,76 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _processWithdrawal(double amount) async {
     if (!mounted) return;
     
-    if (amount <= 0 || amount > _balance) {
-      _showErrorSnackBar('Please enter a valid withdrawal amount');
+    // Close the withdraw dialog
+    Navigator.of(context).pop();
+    
+    // Validate amount
+    if (amount <= 0) {
+      _showErrorSnackBar('Please enter a valid amount');
       return;
     }
 
-    Navigator.of(context).pop(); // Close dialog
+    if (amount > _balance) {
+      _showErrorSnackBar(
+        'Insufficient balance. Available: ₦${_balance.toStringAsFixed(2)}',
+      );
+      return;
+    }
+
     setState(() => _isProcessingPayment = true);
     _showLoadingDialog('Processing withdrawal...');
     
     try {
-      final response = await _paymentService.withdraw(
-        amount: amount,
-      );
+      debugPrint('💰 Processing withdrawal: ₦${amount.toStringAsFixed(2)}');
+
+      final response = await _paymentService.withdraw(amount: amount);
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       
-      if (response.isSuccess) {
-        debugPrint('✅ Withdrawal processed: ₦$amount');
-        _showSuccessSnackBar('✅ Withdrawal requested successfully!');
-        await _loadWalletData();
-        setState(() => _isProcessingPayment = false);
-      } else {
-        _showErrorSnackBar(
-          response.error ?? 'Withdrawal failed. Please try again.',
+      if (response.isSuccess && response.data != null) {
+        debugPrint('✅ Withdrawal successful');
+
+        // Extract new balance from response
+        final newBalanceStr = response.data!['new_balance']?.toString();
+        if (newBalanceStr != null) {
+          final newBalance = double.tryParse(newBalanceStr);
+          if (newBalance != null && mounted) {
+            setState(() => _balance = newBalance);
+          }
+        }
+
+        // Show success message
+        _showSuccessSnackBar(
+          'Withdrawal request submitted successfully! Funds will be transferred within 24 hours.',
         );
-        setState(() => _isProcessingPayment = false);
+
+        // Refresh wallet data
+        await _loadWalletData();
+      } else {
+        final errorMsg = response.error ?? 'Withdrawal failed. Please try again.';
+        debugPrint('⚠️ Withdrawal failed: $errorMsg');
+        _showErrorSnackBar(errorMsg);
       }
     } catch (e) {
+      debugPrint('❌ Withdrawal error: $e');
       if (mounted) {
-        debugPrint('❌ Withdrawal error: $e');
         Navigator.pop(context); // Close loading dialog
-        _showErrorSnackBar('Withdrawal error: ${e.toString()}');
+        String errorMessage = e.toString();
+        
+        // Handle specific error cases
+        if (errorMessage.contains('first withdrawal manually')) {
+          _showErrorSnackBar(
+            'Please add your bank details first before making withdrawals.',
+          );
+        } else if (errorMessage.contains('Only drivers')) {
+          _showErrorSnackBar('Only drivers can withdraw funds.');
+        } else {
+          _showErrorSnackBar('Withdrawal error: $errorMessage');
+        }
+      }
+    } finally {
+      if (mounted) {
         setState(() => _isProcessingPayment = false);
       }
     }
@@ -458,12 +537,15 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showLoadingDialog(String message) {
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => WillPopScope(
+      builder: (BuildContext dialogContext) => WillPopScope(
         onWillPop: () async => false,
-        child: Center(
+        child: Dialog(
+          backgroundColor: Colors.transparent,
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -492,6 +574,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -586,14 +669,6 @@ class _WalletScreenState extends State<WalletScreen> {
           fontWeight: FontWeight.w600,
         ),
       ),
-      actions: [
-        if (!_isProcessingPayment)
-          IconButton(
-            icon: Icon(Icons.history, color: colorScheme.onSurface),
-            onPressed: () => debugPrint('📊 View full transaction history'),
-            tooltip: 'Transaction History',
-          ),
-      ],
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';  // ✅ ADDED
 import 'package:provider/provider.dart';
 import 'routes/app_routes.dart';
 import 'theme/app_theme.dart';
@@ -61,11 +62,38 @@ class SwiftRideApp extends material.StatelessWidget {
       // Set initial route
       initialRoute: AppRoutes.splash,
       
-      // ✅ NEW: Language configuration
-      locale: languageService.currentLocale,
-      supportedLocales: LanguageService.supportedLanguages
-          .map((lang) => lang.locale)
-          .toList(),
+       // ✅ FIXED: Only Flutter-supported locales for MaterialApp
+  locale: languageService.currentLocale,
+  supportedLocales: const [
+    material.Locale('en', 'US'),  // ✅ Only standard locales
+  ],
+      
+      // ✅ FIXED: Localization delegates for Material and Cupertino widgets
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      
+      // ✅ FIXED: Handle unsupported locales (ha_NG, yo_NG, ig_NG, pcm_NG) gracefully
+      localeResolutionCallback: (locale, supportedLocales) {
+        // If the selected locale is supported, use it
+        if (supportedLocales.contains(locale)) {
+          return locale;
+        }
+
+        // For unsupported locales, try to find a match by language code
+        // Example: ha_NG not supported, but we have ha_NG in supportedLocales
+        // This handles the case where device asks for an exact match
+        for (var supported in supportedLocales) {
+          if (supported.languageCode == locale?.languageCode) {
+            return supported;
+          }
+        }
+
+        // Default to English if nothing matches
+        return const material.Locale('en', 'US');
+      },
       
       // Theme configuration - switches between light and dark
       theme: AppTheme.lightTheme,

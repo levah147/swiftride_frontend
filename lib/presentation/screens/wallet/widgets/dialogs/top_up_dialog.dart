@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../../services/wallet_service.dart';
+import '../../../../../services/payment_service.dart';
 
 /// Production-Ready Top Up Dialog - Complete Payment Flow
 /// Features:
@@ -345,7 +345,7 @@ class _TopUpDialogState extends State<TopUpDialog> {
           children: _quickAmounts.map((amount) {
             return ActionChip(
               onPressed: _isLoading ? null : () => _setQuickAmount(amount),
-              label: Text(WalletService.formatCurrency(amount)),
+              label: Text(PaymentService.formatCurrency(amount)),
               backgroundColor: Colors.green.withOpacity(0.1),
               labelStyle: TextStyle(
                 color: Colors.green,
@@ -356,7 +356,7 @@ class _TopUpDialogState extends State<TopUpDialog> {
                 color: Colors.green,
                 width: 1,
               ),
-              tooltip: 'Select ${WalletService.formatCurrency(amount)}',
+              tooltip: 'Select ${PaymentService.formatCurrency(amount)}',
             );
           }).toList(),
         ),

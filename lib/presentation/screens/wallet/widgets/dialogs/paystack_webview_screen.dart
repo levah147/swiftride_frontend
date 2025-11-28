@@ -54,7 +54,12 @@ class _PaystackWebviewScreenState extends State<PaystackWebviewScreen> {
     if (_paymentCompleted) return;
 
     // Payment completed
-    if (url.contains('success') || url.contains('callback')) {
+    // Check for reference (Paystack appends reference to callback URL)
+    // Also check for 'success' or 'callback' as fallbacks
+    if (url.contains(widget.reference) || 
+        url.contains('success') || 
+        url.contains('callback') ||
+        url.contains('trxref')) {
       _paymentCompleted = true;
       debugPrint('✅ Payment completed');
       Navigator.pop(context, {'success': true, 'reference': widget.reference});

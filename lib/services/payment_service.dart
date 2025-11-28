@@ -604,4 +604,23 @@ class PaymentService {
         type.toLowerCase() == 'refund' ||
         type.toLowerCase() == 'bonus';
   }
+
+/// Get transaction icon for display
+  static String getTransactionIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'credit':
+      case 'deposit':
+      case 'ride_earning':
+      case 'refund':
+      case 'bonus':
+        return '↓'; // Money in
+      case 'debit':
+      case 'withdrawal':
+      case 'ride_payment':
+      case 'commission':
+        return '↑'; // Money out
+      default:
+        return '•';
+    }
+  }
 }

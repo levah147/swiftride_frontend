@@ -85,7 +85,7 @@ class PaymentMethodDialog extends StatelessWidget {
               subtitle: 'Mastercard, Visa, Verve',
               color: Colors.blue,
               onTap: () {
-                Navigator.pop(context);
+                // Don't close dialog here - let parent handle it
                 onMethodSelected('card');
               },
             ),
@@ -99,7 +99,7 @@ class PaymentMethodDialog extends StatelessWidget {
               subtitle: 'Direct transfer from bank',
               color: Colors.green,
               onTap: () {
-                Navigator.pop(context);
+                // Don't close dialog here - let parent handle it
                 onMethodSelected('bank_transfer');
               },
             ),
@@ -113,7 +113,7 @@ class PaymentMethodDialog extends StatelessWidget {
               subtitle: 'Dial code from your phone',
               color: Colors.orange,
               onTap: () {
-                Navigator.pop(context);
+                // Don't close dialog here - let parent handle it
                 onMethodSelected('ussd');
               },
             ),

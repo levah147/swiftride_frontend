@@ -41,6 +41,7 @@ class AppRoutes {
   static const String referral = '/promotions/referral';
   static const String loyalty = '/promotions/loyalty';
   
+  
   // Support routes
   static const String support = '/support';
   static const String createTicket = '/support/create-ticket';

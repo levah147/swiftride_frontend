@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../../services/wallet_service.dart';
+import '../../../../../services/payment_service.dart';
 
 /// Production-Ready Withdraw Dialog - Complete Driver Withdrawal Flow
 /// Features:
@@ -69,7 +69,7 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
 
       if (amount > widget.currentBalance) {
         setState(() {
-          _errorMessage = 'Insufficient balance. Maximum: ${WalletService.formatCurrency(widget.currentBalance)}';
+          _errorMessage = 'Insufficient balance. Maximum: ${PaymentService.formatCurrency(widget.currentBalance)}';
         });
         return;
       }
@@ -387,7 +387,7 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
               ),
               const SizedBox(height: 6),
               Text(
-                WalletService.formatCurrency(widget.currentBalance),
+                PaymentService.formatCurrency(widget.currentBalance),
                 style: TextStyle(
                   color: colorScheme.onSurface,
                   fontSize: 24,
@@ -566,7 +566,7 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
                 ),
               ),
               Text(
-                WalletService.formatCurrency(
+                PaymentService.formatCurrency(
                   double.parse(_amountController.text),
                 ),
                 style: TextStyle(

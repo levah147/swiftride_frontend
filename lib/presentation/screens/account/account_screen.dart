@@ -1,29 +1,47 @@
+// ==================== account_screen.dart ====================
+// FILE LOCATION: lib/presentation/screens/account/account_screen.dart
+//
+// Unified Account Screen - adapts based on user role
+// NOW WITH: Shared menu for ALL users (riders, pending drivers, approved drivers)
+//
+// User Flows:
+// - RIDERS: Profile + Shared Menu + Become Driver CTA + Actions
+// - PENDING DRIVERS: Profile + Status Badge + Shared Menu + Actions
+// - APPROVED DRIVERS: Profile + Stats + Vehicle + License + Shared Menu + Actions
+//
+// Changes from previous version:
+// ✅ All users can access wallet, promotions, support, language
+// ✅ Drivers can now manage finances and get help
+// ✅ Pending drivers have features while waiting
+// ✅ Removed unnecessary placeholders (Expense, Communication, Calendars)
+// ✅ Smart label: "My Rides" for riders, "My Trips" for drivers
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:swiftride/screens/drivers/become_driver_screen.dart';
 import 'package:swiftride/screens/drivers/driver_verification_screen.dart';
-import 'package:swiftride/presentation/screens/account/widgets/dialogs/edit_profile_dialog.dart';
 import '../../../constants/colors.dart';
 import '../../../constants/app_strings.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/driver_service.dart';
+import '../../../services/language_service.dart';
 import '../../../models/user.dart';
 import '../../../theme/providers/theme_provider.dart';
 
 // Import widgets
 import 'widgets/shared/profile_header_widget.dart';
 import 'widgets/shared/account_actions_widget.dart';
-import 'widgets/rider/rider_menu_section_widget.dart';
+import 'widgets/shared/shared_menu_section_widget.dart'; // ✅ NEW: Shared menu
 import 'widgets/rider/become_driver_cta_widget.dart';
 import 'widgets/driver/driver_stats_card_widget.dart';
 import 'widgets/driver/driver_vehicle_info_widget.dart';
 import 'widgets/driver/driver_license_info_widget.dart';
 import 'widgets/driver/driver_status_badge_widget.dart';
-import 'widgets/dialogs/edit_profile_dialog.dart';  // ✅ NEW
+import 'widgets/dialogs/edit_profile_dialog.dart';
 
-/// Unified Account Screen - adapts based on user role (Rider, Pending Driver, Approved Driver)
-/// NOW WITH: Profile editing functionality
+/// Unified Account Screen - adapts based on user role
+/// NOW WITH: Complete feature access for all user types
 class AccountScreen extends StatefulWidget {
   final Function(String, {Map<String, dynamic>? data}) onNavigate;
 
@@ -49,7 +67,6 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _driverStatus;
   bool _hasIncompleteVerification = false;
   Map<String, dynamic>? _driverData;
-  String _selectedLanguage = 'English - GB';
 
   @override
   void initState() {
@@ -193,7 +210,6 @@ class _AccountScreenState extends State<AccountScreen> {
           _driverData = response.data as Map<String, dynamic>;
         });
         debugPrint('✅ Driver profile loaded');
-        debugPrint('📊 Driver Data: $_driverData');
       }
     } catch (e) {
       debugPrint('❌ Error loading driver profile: $e');
@@ -237,7 +253,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   // ============================================
-  // PROFILE EDITING (✅ NEW)
+  // PROFILE EDITING
   // ============================================
 
   void _handleEditProfile() {
@@ -251,43 +267,39 @@ class _AccountScreenState extends State<AccountScreen> {
           setState(() {
             _user = updatedUser;
           });
-          debugPrint('✅ Profile updated in UI: ${updatedUser.fullName}');
         },
       ),
     );
   }
 
   // ============================================
-  // ACTIONS
+  // NAVIGATION HANDLERS
   // ============================================
 
   void _handleBecomeDriver() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const BecomeDriverScreen(),
-      ),
-    ).then((_) {
-      // Refresh status after returning
-      _checkDriverStatus();
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BecomeDriverScreen()),
+    );
   }
 
   void _handleCompleteVerification() {
-    Navigator.of(context).push(
+    Navigator.push(
+      context,
       MaterialPageRoute(
         builder: (context) => const DriverVerificationScreen(),
       ),
-    ).then((_) {
-      // Refresh status after returning
-      _checkDriverStatus();
-    });
+    );
   }
+
+  // ============================================
+  // ACCOUNT ACTIONS
+  // ============================================
 
   void _handleLogout() async {
     try {
       debugPrint('🚪 Logging out...');
       
-      // Call backend logout (returns ApiResponse<void>)
       final response = await _authService.logout();
       
       if (response.isSuccess) {
@@ -297,13 +309,11 @@ class _AccountScreenState extends State<AccountScreen> {
       }
       
       // Navigate to auth screen regardless of response
-      // (tokens are cleared locally either way)
       if (mounted) {
         widget.onNavigate('logout');
       }
     } catch (e) {
       debugPrint('❌ Logout error: $e');
-      // Still navigate even if error (token cleared locally)
       if (mounted) {
         widget.onNavigate('logout');
       }
@@ -321,10 +331,7 @@ class _AccountScreenState extends State<AccountScreen> {
           debugPrint('✅ Account deleted successfully');
           _showSuccessSnackBar('Account deleted successfully');
           
-          // Wait a moment for user to see the message
           await Future.delayed(const Duration(milliseconds: 500));
-          
-          // Navigate to login
           widget.onNavigate('logout');
         } else {
           debugPrint('❌ Delete account failed: ${response.error}');
@@ -385,7 +392,11 @@ class _AccountScreenState extends State<AccountScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
-    // Use theme colors from context
+    // Get language service
+    final languageService = Provider.of<LanguageService>(context);
+    final currentLanguage = languageService.getCurrentLanguage().name;
+    
+    // Use theme colors
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -404,14 +415,13 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ),
         actions: [
-          // Theme toggle button connected to provider
+          // Theme toggle button
           IconButton(
             icon: Icon(
               isDarkMode ? Icons.light_mode : Icons.dark_mode,
               color: colorScheme.onSurface,
             ),
             onPressed: () {
-              // Toggle theme through provider
               themeProvider.toggleTheme();
             },
             tooltip: isDarkMode ? 'Light Mode' : 'Dark Mode',
@@ -436,25 +446,57 @@ class _AccountScreenState extends State<AccountScreen> {
                   children: [
                     const SizedBox(height: 8),
                     
-                    // SHARED: Profile Header (EVERYONE) - ✅ NOW WITH EDIT
+                    // ========================================
+                    // PROFILE HEADER (ALL USERS)
+                    // ========================================
                     ProfileHeaderWidget(
                       user: _user,
                       onUploadImage: _pickAndUploadImage,
-                      onEditProfile: _handleEditProfile,  // ✅ NEW
+                      onEditProfile: _handleEditProfile,
                       isUploadingImage: _isUploadingImage,
                       isDarkMode: isDarkMode,
                     ),
 
                     const SizedBox(height: 24),
 
-                    // ADAPTIVE CONTENT based on driver status
-                    if (!_isDriver) ..._buildRiderContent(colorScheme),
-                    if (_isDriver && _driverStatus == 'pending') ..._buildPendingDriverContent(),
-                    if (_isDriver && _driverStatus == 'approved') ..._buildApprovedDriverContent(colorScheme),
+                    // ========================================
+                    // DRIVER-SPECIFIC CONTENT
+                    // ========================================
+                    
+                    // Pending Driver: Status Badge
+                    if (_isDriver && _driverStatus == 'pending')
+                      ..._buildPendingDriverContent(),
+                    
+                    // Approved Driver: Stats + Vehicle + License
+                    if (_isDriver && _driverStatus == 'approved')
+                      ..._buildApprovedDriverContent(colorScheme, isDarkMode),
+
+                    // ========================================
+                    // SHARED MENU (ALL USERS) ✅ NEW!
+                    // ========================================
+                    SharedMenuSectionWidget(
+                      textColor: colorScheme.onSurface,
+                      cardColor: colorScheme.surface,
+                      secondaryText: colorScheme.onSurfaceVariant,
+                      selectedLanguage: currentLanguage,
+                      isDriver: _isDriver, // Smart "My Rides" vs "My Trips"
+                    ),
 
                     const SizedBox(height: 24),
 
-                    // SHARED: Account Actions (EVERYONE)
+                    // ========================================
+                    // BECOME DRIVER CTA (RIDERS ONLY)
+                    // ========================================
+                    if (!_isDriver)
+                      BecomeDriverCTAWidget(
+                        onTap: _handleBecomeDriver,
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // ========================================
+                    // ACCOUNT ACTIONS (ALL USERS)
+                    // ========================================
                     AccountActionsWidget(
                       onLogout: _handleLogout,
                       onDeleteAccount: _handleDeleteAccount,
@@ -475,27 +517,6 @@ class _AccountScreenState extends State<AccountScreen> {
   // CONTENT BUILDERS
   // ============================================
 
-  /// Content for Riders (non-drivers)
-  List<Widget> _buildRiderContent(ColorScheme colorScheme) {
-    debugPrint('🏍️ Building RIDER content');
-    return [
-      // Rider menu items
-      RiderMenuSectionWidget(
-        textColor: colorScheme.onSurface,
-        cardColor: colorScheme.surface,
-        secondaryText: colorScheme.onSurfaceVariant,
-        selectedLanguage: _selectedLanguage,
-      ),
-
-      const SizedBox(height: 24),
-
-      // Become Driver CTA
-      BecomeDriverCTAWidget(
-        onTap: _handleBecomeDriver,
-      ),
-    ];
-  }
-
   /// Content for Pending Drivers
   List<Widget> _buildPendingDriverContent() {
     debugPrint('⏳ Building PENDING DRIVER content');
@@ -504,17 +525,20 @@ class _AccountScreenState extends State<AccountScreen> {
       DriverStatusBadgeWidget(
         status: _driverStatus!,
         hasIncompleteVerification: _hasIncompleteVerification,
-        onCompleteVerification: _hasIncompleteVerification ? _handleCompleteVerification : null,
+        onCompleteVerification: _hasIncompleteVerification 
+            ? _handleCompleteVerification 
+            : null,
       ),
+      const SizedBox(height: 24),
     ];
   }
 
   /// Content for Approved Drivers
-  List<Widget> _buildApprovedDriverContent(ColorScheme colorScheme) {
+  List<Widget> _buildApprovedDriverContent(
+    ColorScheme colorScheme,
+    bool isDarkMode,
+  ) {
     debugPrint('🚗 Building APPROVED DRIVER content');
-    debugPrint('📊 Driver data available: ${_driverData != null}');
-    
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return [
       // Driver stats card
@@ -542,6 +566,8 @@ class _AccountScreenState extends State<AccountScreen> {
         cardColor: colorScheme.surface,
         isDarkMode: isDarkMode,
       ),
+
+      const SizedBox(height: 24),
     ];
   }
 }

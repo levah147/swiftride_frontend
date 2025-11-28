@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/colors.dart';
-import '../../../../services/wallet_service.dart';
+import '../../../../services/payment_service.dart';
 
 /// Production-Ready Wallet Balance Card Widget
 /// Features:
@@ -127,7 +127,7 @@ class WalletBalanceCardWidget extends StatelessWidget {
               scale: 1.0,
               duration: const Duration(milliseconds: 300),
               child: Text(
-                WalletService.formatCurrency(balance),
+                PaymentService.formatCurrency(balance),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 40,

@@ -869,7 +869,7 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
     );
   }
 
-  void _processRedemption(int points, double amount) {
+  void _processRedemption(int points, double amount) async {
     // Show loading
     showDialog(
       context: context,
@@ -879,21 +879,45 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
       ),
     );
 
-    // Simulate API call (you'll need to implement the actual endpoint)
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Close loading
+    try {
+      // Call redemption API
+      final response = await _promotionsService.redeemPoints(points: points);
 
-      // Show success
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('₦${amount.toStringAsFixed(2)} added to your wallet!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (mounted) {
+        // Close loading dialog
+        Navigator.pop(context);
 
-      // Reload data
-      _loadLoyaltyData();
-    });
+        if (response.isSuccess && response.data != null) {
+          // Success! Points redeemed
+          final data = response.data!;
+          final redeemedAmount = data['amount'] as num;
+          final newPoints = data['new_available_points'] as int;
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '🎉 ₦${redeemedAmount.toStringAsFixed(2)} added to your wallet!\n'
+                'New balance: $newPoints points',
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+
+          // Reload loyalty data to show updated points
+          _loadLoyaltyData();
+        } else {
+          // Error occurred
+          _showError(response.error ?? 'Failed to redeem points');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        _showError('An error occurred: ${e.toString()}');
+      }
+    }
   }
 }
