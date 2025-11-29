@@ -209,16 +209,7 @@ class _SupportHomeScreenState extends State<SupportHomeScreen> {
               subtitle: 'Create ticket',
               color: Colors.blue,
               onTap: () => Navigator.pushNamed(context, '/support/create-ticket'),
-              
-              // {
-              //    Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const CreateTicketScreen(
-              //         ),
-              //       ),
-              //     );
-              // }
+        
             ),
           ),
           const SizedBox(width: 12),
@@ -229,16 +220,7 @@ class _SupportHomeScreenState extends State<SupportHomeScreen> {
               title: 'My Tickets',
               subtitle: 'View all',
               color: Colors.orange,
-              onTap: () => Navigator.pushNamed(context, '/support/tickets'),
-              // {
-              //   Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => const MyTicketsScreen(
-              //         ),
-              //       ),
-              //     );
-              // } 
+              onTap: () => Navigator.pushNamed(context, '/support/tickets'), 
             ),
           ),
         ],
@@ -476,7 +458,7 @@ class _SupportHomeScreenState extends State<SupportHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        ticketId,
+                        ticketIdDisplay,
                         style: TextStyle(
                           color: colorScheme.onSurfaceVariant,
                           fontSize: 12,

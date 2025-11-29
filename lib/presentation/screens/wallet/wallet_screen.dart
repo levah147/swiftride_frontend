@@ -373,32 +373,46 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Future<void> _processWithdrawal(double amount) async {
-    if (!mounted) return;
-    
-    // Close the withdraw dialog
-    Navigator.of(context).pop();
-    
-    // Validate amount
-    if (amount <= 0) {
-      _showErrorSnackBar('Please enter a valid amount');
-      return;
+  Future<void> _processWithdrawal(
+  double amount, {
+  String? bankName,
+  String? accountNumber,
+  String? accountName,
+}) async {
+  if (!mounted) return;
+  
+  // Close the withdraw dialog
+  Navigator.of(context).pop();
+  
+  // Validate amount
+  if (amount <= 0) {
+    _showErrorSnackBar('Please enter a valid amount');
+    return;
+  }
+
+  if (amount > _balance) {
+    _showErrorSnackBar(
+      'Insufficient balance. Available: ₦${_balance.toStringAsFixed(2)}',
+    );
+    return;
+  }
+
+  setState(() => _isProcessingPayment = true);
+  _showLoadingDialog('Processing withdrawal...');
+  
+  try {
+    debugPrint('💰 Processing withdrawal: ₦${amount.toStringAsFixed(2)}');
+    if (bankName != null) {
+      debugPrint('🏦 Bank: $bankName, Account: $accountNumber');
     }
 
-    if (amount > _balance) {
-      _showErrorSnackBar(
-        'Insufficient balance. Available: ₦${_balance.toStringAsFixed(2)}',
-      );
-      return;
-    }
-
-    setState(() => _isProcessingPayment = true);
-    _showLoadingDialog('Processing withdrawal...');
-    
-    try {
-      debugPrint('💰 Processing withdrawal: ₦${amount.toStringAsFixed(2)}');
-
-      final response = await _paymentService.withdraw(amount: amount);
+    // ✅ Send bank details to API
+    final response = await _paymentService.withdraw(
+      amount: amount,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      accountName: accountName,
+    );
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -542,8 +556,8 @@ class _WalletScreenState extends State<WalletScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) => WillPopScope(
-        onWillPop: () async => false,
+      builder: (BuildContext dialogContext) => PopScope(
+        canPop: false,                        // ✅ New Flutter 3.12+ API
         child: Dialog(
           backgroundColor: Colors.transparent,
           child: Container(

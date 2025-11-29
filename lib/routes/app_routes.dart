@@ -11,6 +11,8 @@ import '../screens/rides_booking/ride_completion_screen.dart';
 import '../presentation/screens/promotions/promotions_home_screen.dart';
 import '../presentation/screens/promotions/referral_screen.dart';
 import '../presentation/screens/promotions/loyalty_screen.dart';
+import '../presentation/screens/promotions/promo_codes_list_screen.dart';
+import '../presentation/screens/promotions/points_history_screen.dart';
 // Support imports
 import '../presentation/screens/support/support_home_screen.dart';
 import '../presentation/screens/support/create_ticket_screen.dart';
@@ -40,6 +42,8 @@ class AppRoutes {
   static const String promotions = '/promotions';
   static const String referral = '/promotions/referral';
   static const String loyalty = '/promotions/loyalty';
+  static const String promosList = '/promotions/promos';
+  static const String pointsHistory = '/promotions/loyalty/history'; 
   
   
   // Support routes
@@ -62,6 +66,8 @@ class AppRoutes {
     promotions: (context) => const PromotionsHomeScreen(),
     referral: (context) => const ReferralScreen(),
     loyalty: (context) => const LoyaltyScreen(),
+    promosList: (context) => const PromoCodesListScreen(),
+    pointsHistory: (context) => const PointsHistoryScreen(),
     
     // Support screens (without arguments)
     support: (context) => const SupportHomeScreen(),

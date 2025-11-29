@@ -49,29 +49,46 @@ class _PaystackWebviewScreenState extends State<PaystackWebviewScreen> {
   }
 
   void _checkUrl(String url) {
-    debugPrint('🌐 URL: $url');
+  debugPrint('🌐 URL: $url');
 
-    if (_paymentCompleted) return;
+  if (_paymentCompleted) return;
 
-    // Payment completed
-    // Check for reference (Paystack appends reference to callback URL)
-    // Also check for 'success' or 'callback' as fallbacks
-    if (url.contains(widget.reference) || 
-        url.contains('success') || 
-        url.contains('callback') ||
-        url.contains('trxref')) {
-      _paymentCompleted = true;
-      debugPrint('✅ Payment completed');
-      Navigator.pop(context, {'success': true, 'reference': widget.reference});
-    }
+  // Parse URL for better checking
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
 
-    // Payment cancelled
-    if (url.contains('cancel') || url.contains('close')) {
-      _paymentCompleted = true;
-      debugPrint('❌ Payment cancelled');
-      Navigator.pop(context, {'success': false});
+  // Payment completed - Paystack redirects to: https://standard.paystack.co/close
+  if (uri.host.contains('paystack.co')) {
+    // Check for close path with transaction reference
+    if (uri.path.contains('/close')) {
+      // Paystack adds trxref query parameter
+      final trxref = uri.queryParameters['trxref'];
+      
+      if (trxref != null && trxref == widget.reference) {
+        _paymentCompleted = true;
+        debugPrint('✅ Payment completed - reference match: $trxref');
+        Navigator.pop(context, {'success': true, 'reference': widget.reference});
+        return;
+      }
+      
+      // Fallback: if trxref is present but doesn't match, still consider success
+      // (edge case: Paystack might modify reference)
+      if (trxref != null && trxref.isNotEmpty) {
+        _paymentCompleted = true;
+        debugPrint('✅ Payment completed - reference: $trxref');
+        Navigator.pop(context, {'success': true, 'reference': trxref});
+        return;
+      }
     }
   }
+
+  // Check for explicit cancel
+  if (uri.path.contains('/cancel') || uri.queryParameters.containsKey('cancelled')) {
+    _paymentCompleted = true;
+    debugPrint('❌ Payment cancelled');
+    Navigator.pop(context, {'success': false});
+  }
+}
 
   @override
   Widget build(BuildContext context) {

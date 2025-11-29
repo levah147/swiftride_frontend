@@ -9,7 +9,7 @@ import '../../models/vehicle_type.dart';
 import '../../services/location_service.dart';
 import '../../services/ride_service.dart';
 import '../../services/api_client.dart';
-import '../rides_booking/ride_options_screen.dart';
+import '../rides_booking/ride_options_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
   final Function(String, {Map<String, dynamic>? data}) onNavigate;

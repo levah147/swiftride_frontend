@@ -11,7 +11,7 @@ import '../../../../../services/payment_service.dart';
 /// - Rate limiting protection
 class WithdrawDialog extends StatefulWidget {
   final double currentBalance;
-  final Function(double) onWithdraw;
+  final Function(double amount, {String? bankName, String? accountNumber, String? accountName}) onWithdraw;  // ✅ Sends bank details
 
   const WithdrawDialog({
     Key? key,
@@ -97,57 +97,67 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
     }
   }
 
-  /// Process withdrawal with validation
+  
   Future<void> _handleWithdraw() async {
-    FocusScope.of(context).unfocus();
+  FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  if (!_formKey.currentState!.validate()) {
+    return;
+  }
 
-    final amountText = _amountController.text.trim();
-    final amount = double.tryParse(amountText);
+  final amountText = _amountController.text.trim();
+  final amount = double.tryParse(amountText);
 
-    // Final validation
-    if (amount == null ||
-        amount < _minWithdrawal ||
-        amount > _maxWithdrawal ||
-        amount > widget.currentBalance) {
-      setState(() {
-        _errorMessage = 'Invalid withdrawal amount';
-      });
-      return;
-    }
-
-    // Validate bank details
-    if (_bankNameController.text.trim().isEmpty ||
-        _accountNumberController.text.trim().isEmpty ||
-        _accountNameController.text.trim().isEmpty) {
-      setState(() {
-        _errorMessage = 'Please fill in all bank details';
-      });
-      return;
-    }
-
+  // Final validation
+  if (amount == null ||
+      amount < _minWithdrawal ||
+      amount > _maxWithdrawal ||
+      amount > widget.currentBalance) {
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _errorMessage = 'Invalid withdrawal amount';
     });
+    return;
+  }
 
-    try {
-      debugPrint('🏦 Processing withdrawal: ₦$amount to ${_bankNameController.text}');
-      await widget.onWithdraw(amount);
-      // Success handled by parent
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-        debugPrint('❌ Withdrawal error: $e');
-      }
+  // Validate bank details
+  final bankName = _bankNameController.text.trim();
+  final accountNumber = _accountNumberController.text.trim();
+  final accountName = _accountNameController.text.trim();
+  
+  if (bankName.isEmpty || accountNumber.isEmpty || accountName.isEmpty) {
+    setState(() {
+      _errorMessage = 'Please fill in all bank details';
+    });
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    debugPrint('🏦 Processing withdrawal: ₦$amount to $bankName ($accountNumber)');
+    
+    // ✅ Send bank details to parent!
+    await widget.onWithdraw(
+      amount,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      accountName: accountName,
+    );
+    // Success handled by parent
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+      debugPrint('❌ Withdrawal error: $e');
     }
   }
+}
+
 
   /// Quick fill buttons
   void _withdrawAll() {
@@ -163,8 +173,8 @@ class _WithdrawDialogState extends State<WithdrawDialog> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return WillPopScope(
-      onWillPop: () async => !_isLoading,
+    return PopScope(
+      canPop: !_isLoading,
       child: Dialog(
         backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(

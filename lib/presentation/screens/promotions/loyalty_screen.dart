@@ -95,6 +95,18 @@ class _LoyaltyScreenState extends State<LoyaltyScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+         actions: [
+    // ✅ ADD THIS
+    IconButton(
+      icon: const Icon(Icons.history),
+      tooltip: 'Points History',
+      onPressed: () {
+        Navigator.pushNamed(context, '/promotions/loyalty/history');
+      },
+    ),
+  ],
+
+
       ),
       body: _isLoading
           ? Center(

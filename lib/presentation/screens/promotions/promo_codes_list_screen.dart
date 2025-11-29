@@ -196,9 +196,9 @@ class _PromoCodesListScreenState extends State<PromoCodesListScreen> {
                 children: [
                   _buildDetailRow(
                     'Discount',
-                    _promotionsService.formatDiscountDisplay(
+                    PromotionsService.formatDiscountDisplay(
                       promo['discount_type'],
-                      promo['discount_value'],
+                      (promo['discount_value'] as num).toDouble(),
                     ),
                     colorScheme,
                   ),
@@ -473,9 +473,9 @@ class _PromoCodesListScreenState extends State<PromoCodesListScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    _promotionsService.formatDiscountDisplay(
+                    PromotionsService.formatDiscountDisplay(
                       discountType,
-                      discountValue,
+                      discountValue.toDouble(),
                     ),
                     style: const TextStyle(
                       color: Colors.white,

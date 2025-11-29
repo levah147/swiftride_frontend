@@ -94,8 +94,8 @@ class _TopUpDialogState extends State<TopUpDialog> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return WillPopScope(
-      onWillPop: () async => !_isLoading,
+    return PopScope(                        // ✅ New Flutter 3.12+ API
+      canPop: !_isLoading,
       child: Dialog(
         backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(

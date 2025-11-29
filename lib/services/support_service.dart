@@ -223,9 +223,9 @@ class SupportService {
     try {
       debugPrint('⭐ Rating ticket: $ticketId with $rating stars');
 
-      final data = <String, dynamic>{  // ✅ FIXED: Added <String, dynamic>
-      'rating': rating,
-    };
+      final data = <String, dynamic>{
+        'rating': rating,
+      };
 
       if (feedback != null && feedback.isNotEmpty) {
         data['feedback'] = feedback;
@@ -254,6 +254,8 @@ class SupportService {
   // ============================================
 
   /// Get FAQs
+  /// 
+  /// ✅ FIXED: Now uses correct response parsing pattern
   Future<ApiResponse<List<Map<String, dynamic>>>> getFAQs({
     int? categoryId,
     String? search,
@@ -270,14 +272,17 @@ class SupportService {
         queryParams['search'] = search;
       }
 
-      final response = await _apiClient.get<List<dynamic>>(
+      // ✅ FIXED: Changed from List<dynamic> to Map<String, dynamic>
+      final response = await _apiClient.get<Map<String, dynamic>>(
         '/support/faq/',
         queryParams: queryParams,
-        fromJson: (json) => json as List<dynamic>,
+        fromJson: (json) => json as Map<String, dynamic>,
       );
 
       if (response.isSuccess && response.data != null) {
-        final faqs = response.data!.map((e) => e as Map<String, dynamic>).toList();
+        // ✅ FIXED: Added data extraction like all other methods
+        final data = response.data!['data'] as List;
+        final faqs = data.map((e) => e as Map<String, dynamic>).toList();
         debugPrint('✅ Loaded ${faqs.length} FAQs');
         return ApiResponse.success(faqs);
       }
@@ -362,6 +367,7 @@ class SupportService {
   // HELPER METHODS
   // ============================================
 
+  /// Format ticket status for display
   static String formatTicketStatus(String status) {
     switch (status.toLowerCase()) {
       case 'open':
@@ -379,6 +385,7 @@ class SupportService {
     }
   }
 
+  /// Format priority for display
   static String formatPriority(String priority) {
     switch (priority.toLowerCase()) {
       case 'low':
@@ -394,6 +401,7 @@ class SupportService {
     }
   }
 
+  /// Get color for ticket status
   static Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'open':
@@ -411,6 +419,7 @@ class SupportService {
     }
   }
 
+  /// Get color for priority level
   static Color getPriorityColor(String priority) {
     switch (priority.toLowerCase()) {
       case 'low':

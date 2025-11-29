@@ -165,6 +165,13 @@ class _PromotionsHomeScreenState extends State<PromotionsHomeScreen> {
                                 context,
                                 '/promotions/promos',
                               )),
+                               Text(
+                                  'View All',
+                                  style: TextStyle(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                       const SizedBox(height: 12),
                       _buildPromoList(context, colorScheme),
                       const SizedBox(height: 24),

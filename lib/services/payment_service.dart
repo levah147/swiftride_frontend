@@ -414,38 +414,44 @@ class PaymentService {
       return ApiResponse.error('Failed to request withdrawal: ${e.toString()}');
     }
   }
-
-  /// Quick withdrawal for drivers using preferred bank account (DRIVER-SPECIFIC)
-  /// 
-  /// Automatically retrieves driver's saved bank account and creates withdrawal
-  /// request in one call. This is the simplified driver withdrawal method.
-  /// 
-  /// Parameters:
-  /// - amount: Withdrawal amount (minimum ₦100.00)
-  /// 
-  /// Requirements:
-  /// - User must be authenticated driver
-  /// - Driver must have made at least one withdrawal to set preferred bank
-  /// 
-  /// Returns:
-  /// {
-  ///   "message": "Withdrawal request created successfully",
-  ///   "withdrawal": {
-  ///     "id": 1,
-  ///     "amount": "5000.00",
-  ///     "status": "pending",
-  ///     "bank_name": "GTBank",
-  ///     "account_number": "1234567890",
-  ///     "account_name": "John Doe",
-  ///     "created_at": "2025-11-23T..."
-  ///   },
-  ///   "new_balance": "15000.00"
-  /// }
-  Future<ApiResponse<Map<String, dynamic>>> withdraw({
-    required double amount,
-  }) async {
-    try {
-      debugPrint('🏦 Requesting quick withdrawal: ₦$amount');
+ 
+ /// Withdraw funds from wallet (Smart Withdrawal)
+/// 
+/// Supports two modes:
+/// 1. Quick Withdrawal: If no bank details provided, uses last saved bank account
+/// 2. Full Withdrawal: If bank details provided, creates new withdrawal with those details
+/// 
+/// Parameters:
+/// - amount: Withdrawal amount (minimum ₦100.00)
+/// - bankName: Optional bank name (e.g., "GTBank", "Access Bank")
+/// - accountNumber: Optional 10-digit account number
+/// - accountName: Optional account holder name
+/// 
+/// Returns withdrawal details and new wallet balance
+Future<ApiResponse<Map<String, dynamic>>> withdraw({
+  required double amount,
+  String? bankName,
+  String? accountNumber,
+  String? accountName,
+}) async {
+  try {
+    // If bank details provided, use full withdrawal endpoint
+    if (bankName != null && accountNumber != null && accountName != null) {
+      debugPrint('🏦 Requesting withdrawal with bank details: ₦$amount to $bankName');
+      
+      return await _apiClient.post<Map<String, dynamic>>(
+        '/payments/withdrawals/request/',
+        {
+          'amount': amount,
+          'bank_name': bankName,
+          'account_number': accountNumber,
+          'account_name': accountName,
+        },
+        fromJson: (json) => json as Map<String, dynamic>,
+      );
+    } else {
+      // Otherwise use quick withdrawal with saved bank details
+      debugPrint('🏦 Requesting quick withdrawal: ₦$amount (using saved bank details)');
       
       return await _apiClient.post<Map<String, dynamic>>(
         '/payments/withdrawals/quick/',
@@ -454,11 +460,12 @@ class PaymentService {
         },
         fromJson: (json) => json as Map<String, dynamic>,
       );
-    } catch (e) {
-      debugPrint('❌ Error requesting withdrawal: $e');
-      return ApiResponse.error('Failed to request withdrawal: ${e.toString()}');
     }
+  } catch (e) {
+    debugPrint('❌ Error requesting withdrawal: $e');
+    return ApiResponse.error('Failed to request withdrawal: ${e.toString()}');
   }
+}
 
   // ============================================
   // PAYMENT CARD OPERATIONS

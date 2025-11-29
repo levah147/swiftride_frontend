@@ -71,19 +71,19 @@ class WalletTransactionsListWidget extends StatelessWidget {
   // ============================================
 
   Widget _buildFilterChips(ColorScheme colorScheme) {
-    final filters = [
-      ('All', 'all'),
-      ('Credit', 'credit'),
-      ('Debit', 'debit'),
-    ];
+  final filters = [
+    {'label': 'All', 'value': 'all'},       // ✅ Map syntax (compatible)
+    {'label': 'Credit', 'value': 'credit'},
+    {'label': 'Debit', 'value': 'debit'},
+  ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: filters.map((filter) {
-          final label = filter.$1;
-          final value = filter.$2;
-          final isSelected = selectedFilter == value;
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: filters.map((filter) {
+        final label = filter['label']!;     // ✅ Works in all Dart versions
+        final value = filter['value']!;
+        final isSelected = selectedFilter == value;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
