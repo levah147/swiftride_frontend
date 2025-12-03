@@ -2,14 +2,18 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:swiftride/config/api_config.dart'; // Update with your app name
 
 class ApiClient {
-  // ⚙️ CHANGE THIS TO YOUR BACKEND IP
-  static const String baseUrl = 'http://192.168.228.65:8000/api';
+  // Use dynamic URL from ApiConfig
+  static String get baseUrl => ApiConfig.baseUrl;
   
   static ApiClient? _instance;
   
-  ApiClient._internal();
+  ApiClient._internal() {
+    // Print configuration on initialization
+    ApiConfig.printConfig();
+  }
   
   static ApiClient get instance {
     _instance ??= ApiClient._internal();
@@ -73,6 +77,15 @@ class ApiClient {
   }
 
   // ============================================
+  // HTTP CLIENT WITH REDIRECT SUPPORT
+  // ============================================
+  
+  /// Create HTTP client that follows redirects
+  http.Client _createClient() {
+    return http.Client();
+  }
+
+  // ============================================
   // HTTP METHODS
   // ============================================
   
@@ -82,6 +95,7 @@ class ApiClient {
     T Function(dynamic)? fromJson,
     Map<String, String>? queryParams,
   }) async {
+    final client = _createClient();
     try {
       var uri = Uri.parse('$baseUrl$endpoint');
       if (queryParams != null && queryParams.isNotEmpty) {
@@ -94,13 +108,15 @@ class ApiClient {
       
       debugPrint('📡 GET: $uri');
       
-      final response = await http.get(uri, headers: headers)
+      final response = await client.get(uri, headers: headers)
           .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
       debugPrint('❌ GET Error: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
+    } finally {
+      client.close();
     }
   }
 
@@ -110,16 +126,18 @@ class ApiClient {
     bool requiresAuth = true,
     T Function(dynamic)? fromJson,
   }) async {
+    final client = _createClient();
     try {
       final headers = requiresAuth 
           ? await _getAuthHeaders() 
           : _getHeaders();
       
-      debugPrint('📡 POST: $baseUrl$endpoint');
+      final uri = Uri.parse('$baseUrl$endpoint');
+      debugPrint('📡 POST: $uri');
       debugPrint('📤 Data: ${jsonEncode(data)}');
       
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
+      final response = await client.post(
+        uri,
         headers: headers,
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 30));
@@ -128,6 +146,8 @@ class ApiClient {
     } catch (e) {
       debugPrint('❌ POST Error: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
+    } finally {
+      client.close();
     }
   }
 
@@ -137,15 +157,17 @@ class ApiClient {
     bool requiresAuth = true,
     T Function(dynamic)? fromJson,
   }) async {
+    final client = _createClient();
     try {
       final headers = requiresAuth 
           ? await _getAuthHeaders() 
           : _getHeaders();
       
-      debugPrint('📡 PUT: $baseUrl$endpoint');
+      final uri = Uri.parse('$baseUrl$endpoint');
+      debugPrint('📡 PUT: $uri');
       
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
+      final response = await client.put(
+        uri,
         headers: headers,
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 30));
@@ -154,6 +176,8 @@ class ApiClient {
     } catch (e) {
       debugPrint('❌ PUT Error: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
+    } finally {
+      client.close();
     }
   }
 
@@ -163,15 +187,17 @@ class ApiClient {
     bool requiresAuth = true,
     T Function(dynamic)? fromJson,
   }) async {
+    final client = _createClient();
     try {
       final headers = requiresAuth 
           ? await _getAuthHeaders() 
           : _getHeaders();
       
-      debugPrint('📡 PATCH: $baseUrl$endpoint');
+      final uri = Uri.parse('$baseUrl$endpoint');
+      debugPrint('📡 PATCH: $uri');
       
-      final response = await http.patch(
-        Uri.parse('$baseUrl$endpoint'),
+      final response = await client.patch(
+        uri,
         headers: headers,
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 30));
@@ -180,6 +206,8 @@ class ApiClient {
     } catch (e) {
       debugPrint('❌ PATCH Error: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
+    } finally {
+      client.close();
     }
   }
 
@@ -188,15 +216,17 @@ class ApiClient {
     bool requiresAuth = true,
     T Function(dynamic)? fromJson,
   }) async {
+    final client = _createClient();
     try {
       final headers = requiresAuth 
           ? await _getAuthHeaders() 
           : _getHeaders();
       
-      debugPrint('📡 DELETE: $baseUrl$endpoint');
+      final uri = Uri.parse('$baseUrl$endpoint');
+      debugPrint('📡 DELETE: $uri');
       
-      final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
+      final response = await client.delete(
+        uri,
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -204,6 +234,8 @@ class ApiClient {
     } catch (e) {
       debugPrint('❌ DELETE Error: $e');
       return ApiResponse.error('Network error: ${e.toString()}');
+    } finally {
+      client.close();
     }
   }
 
@@ -220,7 +252,8 @@ class ApiClient {
   }) async {
     try {
       final headers = await _getMultipartAuthHeaders();
-      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'))
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final request = http.MultipartRequest('POST', uri)
         ..headers.addAll(headers);
 
       request.fields.addAll(fields);
@@ -230,7 +263,7 @@ class ApiClient {
         request.files.add(file);
       }
 
-      debugPrint('📡 POST Multipart: $baseUrl$endpoint');
+      debugPrint('📡 POST Multipart: $uri');
 
       final streamedResponse = await request.send()
           .timeout(const Duration(seconds: 60));
@@ -252,7 +285,8 @@ class ApiClient {
   }) async {
     try {
       final headers = await _getMultipartAuthHeaders();
-      final request = http.MultipartRequest('PATCH', Uri.parse('$baseUrl$endpoint'))
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final request = http.MultipartRequest('PATCH', uri)
         ..headers.addAll(headers);
 
       request.fields.addAll(fields);
@@ -262,7 +296,7 @@ class ApiClient {
         request.files.add(file);
       }
 
-      debugPrint('📡 PATCH Multipart: $baseUrl$endpoint');
+      debugPrint('📡 PATCH Multipart: $uri');
 
       final streamedResponse = await request.send()
           .timeout(const Duration(seconds: 60));
@@ -287,13 +321,23 @@ class ApiClient {
       debugPrint('📥 Status: ${response.statusCode}');
       debugPrint('📥 Body: ${response.body}');
 
+      // Handle redirects (301, 302, 307, 308)
+      if (response.statusCode >= 301 && response.statusCode <= 308) {
+        final location = response.headers['location'];
+        return ApiResponse.error(
+          'Server redirect detected (${response.statusCode}). '
+          'Check URL structure. ${location != null ? "Redirecting to: $location" : ""}',
+          statusCode: response.statusCode,
+        );
+      }
+
       // Handle empty responses
       if (response.body.isEmpty) {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return ApiResponse.success(null as T);
         }
         return ApiResponse.error(
-          'Empty response from server',
+          'Empty response from server (Status: ${response.statusCode})',
           statusCode: response.statusCode,
         );
       }
@@ -419,6 +463,7 @@ class ApiClient {
   // ============================================
   
   Future<bool> refreshAccessToken() async {
+    final client = _createClient();
     try {
       final refreshToken = await _getRefreshToken();
       if (refreshToken == null) {
@@ -428,8 +473,9 @@ class ApiClient {
 
       debugPrint('🔄 Refreshing access token...');
       
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/token/refresh/'),
+      final uri = Uri.parse('$baseUrl/auth/token/refresh/');
+      final response = await client.post(
+        uri,
         headers: _getHeaders(),
         body: jsonEncode({'refresh': refreshToken}),
       );
@@ -449,6 +495,8 @@ class ApiClient {
     } catch (e) {
       debugPrint('❌ Token refresh error: $e');
       return false;
+    } finally {
+      client.close();
     }
   }
 
@@ -488,6 +536,7 @@ class ApiResponse<T> {
   bool get isNotFound => statusCode == 404;
   bool get isValidationError => statusCode == 400;
   bool get isServerError => statusCode != null && statusCode! >= 500;
+  bool get isRedirect => statusCode != null && statusCode! >= 301 && statusCode! <= 308;
   
   // Get formatted error message
   String get errorMessage => error ?? 'Unknown error occurred';

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../constants/colors.dart';
-import '../../constants/app_dimensions.dart';
-import '../../models/vehicle_type.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:swiftride/routes/app_routes.dart';
+import 'package:swiftride/routes/route_arguments.dart';
+import '../../../../../constants/app_dimensions.dart';
+import '../../../../../models/vehicle_type.dart';
 import 'driver_matching_screen.dart';
 
 class RideOptionsScreen extends StatefulWidget {
   final String from;
   final String to;
   final bool isScheduled;
-  final String? city; // Current city to determine available vehicles
+  final String? city;
 
   const RideOptionsScreen({
     super.key,
@@ -25,7 +27,7 @@ class RideOptionsScreen extends StatefulWidget {
 class _RideOptionsScreenState extends State<RideOptionsScreen> {
   int _selectedIndex = 0;
   late List<VehicleType> _availableVehicles;
-  double _estimatedDistance = 5.2; // km - TODO: Calculate from coordinates
+  double _estimatedDistance = 5.2;
   bool _isLoadingFare = false;
 
   @override
@@ -36,7 +38,6 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   }
 
   void _loadAvailableVehicles() {
-    // Get vehicles based on city
     final city = widget.city ?? 'Makurdi';
     setState(() {
       _availableVehicles = VehicleTypes.getVehiclesForCity(city);
@@ -45,31 +46,29 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
 
   Future<void> _calculateFares() async {
     setState(() => _isLoadingFare = true);
-    
-    // TODO: Call API to calculate actual fares
-    // POST /api/rides/calculate-fare/
-    // For now, using mock calculation
-    
     await Future.delayed(const Duration(milliseconds: 500));
-    
     setState(() => _isLoadingFare = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    // 🎨 Get theme colors
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundPrimary,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Choose a ride',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -77,60 +76,50 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
       ),
       body: Column(
         children: [
-          // Route summary
-          _buildRouteSummary(),
-          
+          _buildRouteSummary(colorScheme),
           const SizedBox(height: 16),
-          
-          // Distance and time info
-          _buildTripInfo(),
-          
+          _buildTripInfo(colorScheme),
           const SizedBox(height: 24),
-          
-          // Vehicle options
           Expanded(
-            child: _buildVehicleList(),
+            child: _buildVehicleList(colorScheme),
           ),
-          
-          // Book button
-          _buildBookButton(),
+          _buildBookButton(colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildRouteSummary() {
+  Widget _buildRouteSummary(ColorScheme colorScheme) {
     return Container(
       margin: const EdgeInsets.all(AppDimensions.paddingLarge),
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppDimensions.radiusLarge),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          // Route indicator
           Column(
             children: [
               Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),
               Container(
                 width: 2,
                 height: 30,
-                color: AppColors.grey600,
+                color: colorScheme.onSurfaceVariant,
               ),
               Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.error,
+                decoration: BoxDecoration(
+                  color: colorScheme.error,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -138,15 +127,14 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
           ),
           const SizedBox(width: 16),
           
-          // Addresses
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.from,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -156,8 +144,8 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                 const SizedBox(height: 12),
                 Text(
                   widget.to,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -168,30 +156,26 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
             ),
           ),
           
-          // Scheduled badge
           if (widget.isScheduled)
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.15),
+                color: colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.schedule,
-                    color: AppColors.primary,
+                    color: colorScheme.primary,
                     size: 14,
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Text(
                     'Scheduled',
                     style: TextStyle(
-                      color: AppColors.primary,
+                      color: colorScheme.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -204,7 +188,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     );
   }
 
-  Widget _buildTripInfo() {
+  Widget _buildTripInfo(ColorScheme colorScheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
       child: Row(
@@ -212,34 +196,40 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
           _buildInfoChip(
             icon: Icons.straighten,
             label: '${_estimatedDistance.toStringAsFixed(1)} km',
+            colorScheme: colorScheme,
           ),
           const SizedBox(width: 12),
           _buildInfoChip(
             icon: Icons.access_time,
             label: '${(_estimatedDistance * 3).toInt()} min',
+            colorScheme: colorScheme,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoChip({required IconData icon, required String label}) {
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required ColorScheme colorScheme,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.textSecondary, size: 16),
+          Icon(icon, color: colorScheme.onSurfaceVariant, size: 16),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: colorScheme.onSurface,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -249,11 +239,11 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     );
   }
 
-  Widget _buildVehicleList() {
+  Widget _buildVehicleList(ColorScheme colorScheme) {
     if (_isLoadingFare) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
         ),
       );
     }
@@ -267,9 +257,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
         final fare = vehicle.calculateFare(_estimatedDistance);
         
         return GestureDetector(
-          onTap: () {
-            setState(() => _selectedIndex = index);
-          },
+          onTap: () => setState(() => _selectedIndex = index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.only(bottom: 12),
@@ -277,16 +265,15 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
             decoration: BoxDecoration(
               color: isSelected 
                   ? vehicle.color.withOpacity(0.1) 
-                  : AppColors.surface,
+                  : colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? vehicle.color : AppColors.border,
+                color: isSelected ? vehicle.color : colorScheme.outline.withOpacity(0.2),
                 width: isSelected ? 2 : 1,
               ),
             ),
             child: Row(
               children: [
-                // Vehicle icon
                 Container(
                   width: 56,
                   height: 56,
@@ -303,7 +290,6 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                 
                 const SizedBox(width: 16),
                 
-                // Vehicle info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,8 +298,8 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                         children: [
                           Text(
                             vehicle.name,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -344,8 +330,8 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '${vehicle.description} • ${vehicle.estimatedTime}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
                           fontSize: 13,
                         ),
                       ),
@@ -353,14 +339,13 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                   ),
                 ),
                 
-                // Price
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       vehicle.formatPrice(fare),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -381,17 +366,17 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     );
   }
 
-  Widget _buildBookButton() {
+  Widget _buildBookButton(ColorScheme colorScheme) {
     final selectedVehicle = _availableVehicles[_selectedIndex];
     final fare = selectedVehicle.calculateFare(_estimatedDistance);
     
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: colorScheme.shadow.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -401,27 +386,26 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Payment method selector (optional)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(
                     Icons.account_balance_wallet,
-                    color: AppColors.primary,
+                    color: colorScheme.primary,
                     size: 20,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Cash',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: colorScheme.onSurface,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -429,7 +413,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                   ),
                   Icon(
                     Icons.keyboard_arrow_down,
-                    color: AppColors.textSecondary,
+                    color: colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                 ],
@@ -438,27 +422,26 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
             
             const SizedBox(height: 16),
             
-            // Book button
             SizedBox(
               width: double.infinity,
               height: AppDimensions.buttonHeightLarge,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushNamed(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => DriverMatchingScreen(
-                        from: widget.from,
-                        to: widget.to,
-                        rideType: {
-                          'id': selectedVehicle.id,
-                          'name': selectedVehicle.name,
-                          'price': selectedVehicle.formatPrice(fare),
-                          'icon': selectedVehicle.icon,
-                          'color': selectedVehicle.color,
-                        },
-                        isScheduled: widget.isScheduled,
-                      ),
+                    AppRoutes.driverMatching,
+                    arguments: DriverMatchingArguments(
+                      rideId: 'ride-${DateTime.now().millisecondsSinceEpoch}',
+                      from: LatLng(0, 0),
+                      to: widget.to,
+                      rideType: {
+                        'id': selectedVehicle.id,
+                        'name': selectedVehicle.name,
+                        'price': selectedVehicle.formatPrice(fare),
+                        'icon': selectedVehicle.icon,
+                        'color': selectedVehicle.color,
+                      },
+                      isScheduled: widget.isScheduled,
                     ),
                   );
                 },

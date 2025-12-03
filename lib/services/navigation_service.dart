@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../routes/app_routes.dart';
 import '../routes/route_arguments.dart';
 
@@ -50,16 +51,19 @@ class NavigationService {
     );
   }
 
+  // ✅ FIXED: Updated to match DriverMatchingArguments signature
   void goToDriverMatching({
-    required String from,
-    required String to,
+    required String rideId,           // ✅ ADDED
+    required LatLng from,             // ✅ CHANGED: String → LatLng
+    required String to,               // Keep as String
     required Map<String, dynamic> rideType,
     required bool isScheduled,
   }) {
     _navigator?.pushNamed(
       AppRoutes.driverMatching,
       arguments: DriverMatchingArguments(
-        from: from,
+        rideId: rideId,               // ✅ ADDED
+        from: from,                   // ✅ Now LatLng type
         to: to,
         rideType: rideType,
         isScheduled: isScheduled,
@@ -67,7 +71,9 @@ class NavigationService {
     );
   }
 
+  // ✅ FIXED: Updated to match RideTrackingArguments signature
   void goToRideTracking({
+    required String rideId,           // ✅ ADDED
     required String from,
     required String to,
     required Map<String, dynamic> rideType,
@@ -76,6 +82,7 @@ class NavigationService {
     _navigator?.pushReplacementNamed(
       AppRoutes.rideTracking,
       arguments: RideTrackingArguments(
+        rideId: rideId,               // ✅ ADDED
         from: from,
         to: to,
         rideType: rideType,
@@ -84,7 +91,9 @@ class NavigationService {
     );
   }
 
+  // ✅ FIXED: Updated to match RideCompletionArguments signature
   void goToRideCompletion({
+    required String rideId,           // ✅ ADDED
     required String from,
     required String to,
     required Map<String, dynamic> rideType,
@@ -95,6 +104,7 @@ class NavigationService {
     _navigator?.pushReplacementNamed(
       AppRoutes.rideCompletion,
       arguments: RideCompletionArguments(
+        rideId: rideId,               // ✅ ADDED
         from: from,
         to: to,
         rideType: rideType,

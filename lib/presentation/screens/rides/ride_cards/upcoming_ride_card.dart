@@ -1,8 +1,7 @@
 // ==================== widgets/ride_cards/upcoming_ride_card.dart ====================
 import 'package:flutter/material.dart';
-import '../../constants/colors.dart';
-import '../../constants/app_dimensions.dart';
-import '../../models/ride.dart';
+import '../../../../constants/app_dimensions.dart';
+import '../../../../models/ride.dart';
 
 class UpcomingRideCard extends StatelessWidget {
   final Ride ride;
@@ -31,14 +30,18 @@ class UpcomingRideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🎨 Get theme colors
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppDimensions.paddingLarge),
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
+          color: colorScheme.primary.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -47,12 +50,12 @@ class UpcomingRideCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: colorScheme.primary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.schedule,
-              color: Colors.white,
+              color: colorScheme.onPrimary,
               size: 20,
             ),
           ),
@@ -64,15 +67,15 @@ class UpcomingRideCard extends StatelessWidget {
                 Text(
                   _getStatusText(ride.status),
                   style: TextStyle(
-                    color: Colors.grey[400],
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${ride.pickupAddress} → ${ride.destinationAddress}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -84,7 +87,7 @@ class UpcomingRideCard extends StatelessWidget {
           ),
           Icon(
             Icons.more_vert,
-            color: Colors.grey[400],
+            color: colorScheme.onSurfaceVariant,
             size: 20,
           ),
         ],

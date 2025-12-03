@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../constants/colors.dart';
+import '../../../../constants/colors.dart';
 
 class RideCompletionScreen extends StatefulWidget {
   final String from;
@@ -29,54 +29,56 @@ class _RideCompletionScreenState extends State<RideCompletionScreen> {
   bool _tipAdded = false;
   double _tipAmount = 0.0;
 
-  @override
-  Widget build(BuildContext context) {
-    final baseFare = double.parse(widget.rideType['price'].replaceAll('\$', ''));
-    final totalFare = baseFare + _tipAmount;
+@override
+Widget build(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final baseFare = double.parse(widget.rideType['price'].replaceAll('\$', ''));
+  final totalFare = baseFare + _tipAmount;
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+    backgroundColor: theme.scaffoldBackgroundColor, // ✅
+    appBar: AppBar(
+      backgroundColor: theme.scaffoldBackgroundColor, // ✅
+      elevation: 0,
+      leading: IconButton(
+        icon: Icon(Icons.close, color: colorScheme.onSurface), // ✅
+        onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+      ),
+      title: Text(
+        'Trip Completed',
+        style: TextStyle(
+          color: colorScheme.onSurface, // ✅
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
         ),
-        title: const Text(
-          'Trip Completed',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+      ),
+      centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Success icon
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 40,
-              ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Success icon
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: colorScheme.primary, // ✅
+              borderRadius: BorderRadius.circular(40),
             ),
+            child: Icon(
+              Icons.check,
+              color: colorScheme.onPrimary, // ✅
+              size: 40,
+            ),
+          ),
             const SizedBox(height: 16),
             
-            const Text(
+             Text(
               'Trip Completed Successfully!',
               style: TextStyle(
-                color: Colors.white,
+                color: colorScheme.onSurface, // ✅
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -87,7 +89,7 @@ class _RideCompletionScreenState extends State<RideCompletionScreen> {
             Text(
               'Thank you for riding with SwiftRide',
               style: TextStyle(
-                color: Colors.grey[400],
+                color: colorScheme.onSurfaceVariant, // ✅
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -98,7 +100,7 @@ class _RideCompletionScreenState extends State<RideCompletionScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[900],
+                 color: colorScheme.surface, // ✅
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

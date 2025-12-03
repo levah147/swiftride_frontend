@@ -26,7 +26,7 @@ class PricingService {
       }
 
       return await _apiClient.get<List<VehicleType>>(
-        '/pricing/vehicle-types/',
+        '/pricing/types/',
         queryParams: queryParams,
         fromJson: (json) {
           if (json is List) {
@@ -42,13 +42,13 @@ class PricingService {
   }
 
   /// Get details of a specific vehicle type
-  /// Django endpoint: GET /api/pricing/vehicle-types/{id}/
+  /// Django endpoint: GET /api/pricing/types/{id}/
   Future<ApiResponse<VehicleType>> getVehicleTypeDetails(String vehicleTypeId) async {
     try {
       debugPrint('🚗 Fetching vehicle type: $vehicleTypeId');
       
       return await _apiClient.get<VehicleType>(
-        '/pricing/vehicle-types/$vehicleTypeId/',
+        '/pricing/types/$vehicleTypeId/',
         fromJson: (json) => VehicleType.fromJson(json),
       );
     } catch (e) {
@@ -121,7 +121,7 @@ class PricingService {
       }
 
       return await _apiClient.get<Map<String, dynamic>>(
-        '/pricing/surge/',
+        '/pricing/surge-info/',
         queryParams: queryParams,
         fromJson: (json) => json as Map<String, dynamic>,
       );
@@ -137,23 +137,23 @@ class PricingService {
   
   /// Get current fuel price for a city
   /// Django endpoint: GET /api/pricing/fuel-price/
-  Future<ApiResponse<Map<String, dynamic>>> getFuelPrice({String? cityName}) async {
-    try {
-      final queryParams = <String, String>{};
-      if (cityName != null) {
-        queryParams['city_name'] = cityName;
-      }
+  // Future<ApiResponse<Map<String, dynamic>>> getFuelPrice({String? cityName}) async {
+  //   try {
+  //     final queryParams = <String, String>{};
+  //     if (cityName != null) {
+  //       queryParams['city_name'] = cityName;
+  //     }
 
-      return await _apiClient.get<Map<String, dynamic>>(
-        '/pricing/fuel-price/',
-        queryParams: queryParams,
-        fromJson: (json) => json as Map<String, dynamic>,
-      );
-    } catch (e) {
-      debugPrint('❌ Get Fuel Price Error: $e');
-      return ApiResponse.error('Failed to get fuel price: ${e.toString()}');
-    }
-  }
+      // return await _apiClient.get<Map<String, dynamic>>(
+        // '/pricing/fuel-price/',
+  //       queryParams: queryParams,
+  //       fromJson: (json) => json as Map<String, dynamic>,
+  //     );
+  //   } catch (e) {
+  //     debugPrint('❌ Get Fuel Price Error: $e');
+  //     return ApiResponse.error('Failed to get fuel price: ${e.toString()}');
+  //   }
+  // }
 
   // ============================================
   // CITIES

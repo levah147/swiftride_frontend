@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../constants/colors.dart';
-import '../../constants/app_dimensions.dart';
+import '../../../../constants/app_dimensions.dart';
 import 'ride_options_screen.dart';
 
 class DestinationSelectionScreen extends StatefulWidget {
@@ -50,12 +49,10 @@ class _DestinationSelectionScreenState
     super.initState();
     _fromController.text = 'Current Location';
     
-    // Auto-focus destination field
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _toFocusNode.requestFocus();
     });
 
-    // Listen to destination changes for search
     _toController.addListener(() {
       setState(() {
         _searchQuery = _toController.text;
@@ -85,36 +82,34 @@ class _DestinationSelectionScreenState
 
   @override
   Widget build(BuildContext context) {
+    // 🎨 Get theme colors
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            // Header with input fields
-            _buildHeader(),
+            _buildHeader(colorScheme),
             
-            // Divider
-            Container(
-              height: 1,
-              color: AppColors.divider,
-            ),
+            Divider(height: 1, color: colorScheme.outline.withOpacity(0.2)),
             
-            // Content
             Expanded(
               child: _searchQuery.isEmpty
-                  ? _buildDefaultContent()
-                  : _buildSearchResults(),
+                  ? _buildDefaultContent(colorScheme)
+                  : _buildSearchResults(colorScheme),
             ),
             
-            // Continue button (if destination is selected)
-            if (_toController.text.isNotEmpty) _buildContinueButton(),
+            if (_toController.text.isNotEmpty) 
+              _buildContinueButton(colorScheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       child: Column(
@@ -123,21 +118,21 @@ class _DestinationSelectionScreenState
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
                 onPressed: () => Navigator.pop(context),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: colorScheme.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Where to?',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -152,9 +147,9 @@ class _DestinationSelectionScreenState
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
             ),
             child: Column(
               children: [
@@ -165,7 +160,7 @@ class _DestinationSelectionScreenState
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -174,13 +169,13 @@ class _DestinationSelectionScreenState
                       child: TextField(
                         controller: _fromController,
                         enabled: false,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
                           fontSize: 16,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Pickup location',
-                          hintStyle: TextStyle(color: AppColors.textHint),
+                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                           border: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
@@ -190,12 +185,10 @@ class _DestinationSelectionScreenState
                     IconButton(
                       icon: Icon(
                         Icons.my_location,
-                        color: AppColors.primary,
+                        color: colorScheme.primary,
                         size: 20,
                       ),
-                      onPressed: () {
-                        // TODO: Get current location
-                      },
+                      onPressed: () {},
                     ),
                   ],
                 ),
@@ -206,7 +199,7 @@ class _DestinationSelectionScreenState
                   child: Container(
                     width: 2,
                     height: 20,
-                    color: AppColors.grey600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 
@@ -217,7 +210,7 @@ class _DestinationSelectionScreenState
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: AppColors.error,
+                        color: colorScheme.error,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -226,13 +219,13 @@ class _DestinationSelectionScreenState
                       child: TextField(
                         controller: _toController,
                         focusNode: _toFocusNode,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
                           fontSize: 16,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Where to?',
-                          hintStyle: TextStyle(color: AppColors.textHint),
+                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                           border: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
@@ -241,14 +234,12 @@ class _DestinationSelectionScreenState
                     ),
                     if (_toController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear,
-                          color: AppColors.textSecondary,
+                          color: colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
-                        onPressed: () {
-                          _toController.clear();
-                        },
+                        onPressed: () => _toController.clear(),
                       ),
                   ],
                 ),
@@ -263,16 +254,14 @@ class _DestinationSelectionScreenState
             children: [
               Switch(
                 value: _isScheduled,
-                onChanged: (value) {
-                  setState(() => _isScheduled = value);
-                },
-                activeColor: AppColors.primary,
+                onChanged: (value) => setState(() => _isScheduled = value),
+                activeColor: colorScheme.primary,
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Schedule for later',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: colorScheme.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
@@ -284,42 +273,38 @@ class _DestinationSelectionScreenState
     );
   }
 
-  Widget _buildDefaultContent() {
+  Widget _buildDefaultContent(ColorScheme colorScheme) {
     return ListView(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       children: [
-        // Saved places
-        _buildSectionHeader('Saved places'),
+        _buildSectionHeader('Saved places', colorScheme),
         const SizedBox(height: 8),
         ..._savedPlaces.map((place) => _buildLocationItem(
               icon: place['icon'] == 'home' ? Icons.home_outlined : Icons.work_outline,
               title: place['title']!,
               subtitle: place['subtitle']!,
-              onTap: () {
-                // TODO: Navigate to add saved place
-              },
+              onTap: () {},
+              colorScheme: colorScheme,
             )),
         
         const SizedBox(height: 24),
         
-        // Recent locations
-        _buildSectionHeader('Recent'),
+        _buildSectionHeader('Recent', colorScheme),
         const SizedBox(height: 8),
         ..._recentLocations.map((location) => _buildLocationItem(
               icon: Icons.history,
               title: location['title']!,
               subtitle: location['subtitle']!,
               onTap: () {
-                setState(() {
-                  _toController.text = location['title']!;
-                });
+                setState(() => _toController.text = location['title']!);
               },
+              colorScheme: colorScheme,
             )),
       ],
     );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults(ColorScheme colorScheme) {
     if (_filteredLocations.isEmpty) {
       return Center(
         child: Column(
@@ -328,13 +313,13 @@ class _DestinationSelectionScreenState
             Icon(
               Icons.search_off,
               size: 64,
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
             Text(
               'No results found for "$_searchQuery"',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
                 fontSize: 16,
               ),
             ),
@@ -346,28 +331,27 @@ class _DestinationSelectionScreenState
     return ListView(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       children: [
-        _buildSectionHeader('Search results'),
+        _buildSectionHeader('Search results', colorScheme),
         const SizedBox(height: 8),
         ..._filteredLocations.map((location) => _buildLocationItem(
               icon: Icons.location_on,
               title: location['title']!,
               subtitle: location['subtitle']!,
               onTap: () {
-                setState(() {
-                  _toController.text = location['title']!;
-                });
+                setState(() => _toController.text = location['title']!);
                 _toFocusNode.unfocus();
               },
+              colorScheme: colorScheme,
             )),
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, ColorScheme colorScheme) {
     return Text(
       title.toUpperCase(),
-      style: const TextStyle(
-        color: AppColors.textSecondary,
+      style: TextStyle(
+        color: colorScheme.onSurfaceVariant,
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
@@ -380,6 +364,7 @@ class _DestinationSelectionScreenState
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required ColorScheme colorScheme,
   }) {
     return InkWell(
       onTap: onTap,
@@ -392,12 +377,12 @@ class _DestinationSelectionScreenState
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: AppColors.textSecondary,
+                color: colorScheme.onSurfaceVariant,
                 size: 20,
               ),
             ),
@@ -408,8 +393,8 @@ class _DestinationSelectionScreenState
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
@@ -417,8 +402,8 @@ class _DestinationSelectionScreenState
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 13,
                     ),
                     maxLines: 1,
@@ -433,14 +418,14 @@ class _DestinationSelectionScreenState
     );
   }
 
-  Widget _buildContinueButton() {
+  Widget _buildContinueButton(ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: colorScheme.shadow.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -464,8 +449,8 @@ class _DestinationSelectionScreenState
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),

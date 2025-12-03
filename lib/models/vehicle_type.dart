@@ -11,6 +11,8 @@ class VehicleType {
   final double pricePerMinute;
   final double minimumFare;
   final int maxPassengers;
+  final int capacity;
+  final double surgeMultiplier;
   final String? estimatedTime;
   final bool available;
 
@@ -25,13 +27,16 @@ class VehicleType {
     required this.pricePerMinute,
     required this.minimumFare,
     required this.maxPassengers,
+    this.capacity = 4,
+    this.surgeMultiplier = 1.0,
     this.estimatedTime,
     this.available = true,
   });
 
   // Calculate estimated fare
   double calculateFare(double distanceKm, {int durationMinutes = 0}) {
-    final fare = baseFare + (pricePerKm * distanceKm) + (pricePerMinute * durationMinutes);
+    final baseFareAmount = baseFare + (pricePerKm * distanceKm) + (pricePerMinute * durationMinutes);
+    final fare = baseFareAmount * surgeMultiplier;
     return fare < minimumFare ? minimumFare : fare;
   }
 
@@ -57,6 +62,8 @@ class VehicleType {
       pricePerMinute: _parseDouble(json['price_per_minute']) ?? 10.0,
       minimumFare: _parseDouble(json['minimum_fare']) ?? 800.0,
       maxPassengers: json['max_passengers'] ?? 4,
+      capacity: json['capacity'] ?? json['max_passengers'] ?? 4,
+      surgeMultiplier: _parseDouble(json['surge_multiplier']) ?? 1.0,
       estimatedTime: json['estimated_time'],
       available: json['available'] ?? true,
     );
@@ -81,6 +88,8 @@ class VehicleType {
       'price_per_minute': pricePerMinute,
       'minimum_fare': minimumFare,
       'max_passengers': maxPassengers,
+      'capacity': capacity,
+      'surge_multiplier': surgeMultiplier,
       'estimated_time': estimatedTime,
       'available': available,
     };
@@ -133,6 +142,8 @@ class VehicleType {
     double? pricePerMinute,
     double? minimumFare,
     int? maxPassengers,
+    int? capacity,
+    double? surgeMultiplier,
     String? estimatedTime,
     bool? available,
   }) {
@@ -147,6 +158,8 @@ class VehicleType {
       pricePerMinute: pricePerMinute ?? this.pricePerMinute,
       minimumFare: minimumFare ?? this.minimumFare,
       maxPassengers: maxPassengers ?? this.maxPassengers,
+      capacity: capacity ?? this.capacity,
+      surgeMultiplier: surgeMultiplier ?? this.surgeMultiplier,
       estimatedTime: estimatedTime ?? this.estimatedTime,
       available: available ?? this.available,
     );
@@ -154,7 +167,7 @@ class VehicleType {
 
   @override
   String toString() {
-    return 'VehicleType(id: $id, name: $name, baseF are: ₦$baseFare)';
+    return 'VehicleType(id: $id, name: $name, baseFare: ₦$baseFare, capacity: $capacity)';
   }
 }
 
@@ -177,6 +190,8 @@ class VehicleTypes {
         pricePerMinute: 10,
         minimumFare: 800,
         maxPassengers: 4,
+        capacity: 4,
+        surgeMultiplier: 1.0,
         estimatedTime: '5 min',
       ),
       VehicleType(
@@ -190,6 +205,8 @@ class VehicleTypes {
         pricePerMinute: 12,
         minimumFare: 1000,
         maxPassengers: 4,
+        capacity: 4,
+        surgeMultiplier: 1.0,
         estimatedTime: '6 min',
       ),
       VehicleType(
@@ -203,6 +220,8 @@ class VehicleTypes {
         pricePerMinute: 15,
         minimumFare: 1500,
         maxPassengers: 6,
+        capacity: 6,
+        surgeMultiplier: 1.0,
         estimatedTime: '8 min',
       ),
     ];
@@ -222,6 +241,8 @@ class VehicleTypes {
         pricePerMinute: 5,
         minimumFare: 300,
         maxPassengers: 1,
+        capacity: 1,
+        surgeMultiplier: 1.0,
         estimatedTime: '3 min',
       ),
       VehicleType(
@@ -235,6 +256,8 @@ class VehicleTypes {
         pricePerMinute: 7,
         minimumFare: 400,
         maxPassengers: 3,
+        capacity: 3,
+        surgeMultiplier: 1.0,
         estimatedTime: '5 min',
       ),
       ...getDefaultVehicles(),
@@ -255,6 +278,8 @@ class VehicleTypes {
         pricePerMinute: 12,
         minimumFare: 1200,
         maxPassengers: 4,
+        capacity: 4,
+        surgeMultiplier: 1.0,
         estimatedTime: '8 min',
       ),
       VehicleType(
@@ -268,6 +293,8 @@ class VehicleTypes {
         pricePerMinute: 15,
         minimumFare: 1500,
         maxPassengers: 4,
+        capacity: 4,
+        surgeMultiplier: 1.0,
         estimatedTime: '10 min',
       ),
       VehicleType(
@@ -281,6 +308,8 @@ class VehicleTypes {
         pricePerMinute: 18,
         minimumFare: 2000,
         maxPassengers: 6,
+        capacity: 6,
+        surgeMultiplier: 1.0,
         estimatedTime: '12 min',
       ),
     ];

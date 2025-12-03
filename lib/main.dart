@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';  // ✅ ADDED
+import 'package:flutter_localizations/flutter_localizations.dart'; // ✅ ADDED
 import 'package:provider/provider.dart';
 import 'routes/app_routes.dart';
 import 'theme/app_theme.dart';
@@ -13,7 +13,7 @@ void main() async {
   material.WidgetsFlutterBinding.ensureInitialized();
 
   // Lock orientation to portrait only
-  await SystemChrome.setPreferredOrientations([ 
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
@@ -21,7 +21,8 @@ void main() async {
   // ✅ NEW: Initialize language service and load saved language
   final languageService = LanguageService();
   await languageService.initialize();
-  material.debugPrint('✅ Language service initialized: ${languageService.getCurrentLanguage().name}');
+  material.debugPrint(
+      '✅ Language service initialized: ${languageService.getCurrentLanguage().name}');
 
   material.runApp(
     // Wrap app with MultiProvider for both theme and language management
@@ -48,33 +49,33 @@ class SwiftRideApp extends material.StatelessWidget {
   material.Widget build(material.BuildContext context) {
     // Listen to theme changes
     final themeProvider = Provider.of<theme_provider.ThemeProvider>(context);
-    
+
     // ✅ NEW: Listen to language changes
     final languageService = Provider.of<LanguageService>(context);
-    
+
     // Update system UI when theme changes
     _updateSystemUI(themeProvider.isDarkMode);
 
     return material.MaterialApp(
       title: 'SwiftRide',
       debugShowCheckedModeBanner: false,
-      
+
       // Set initial route
       initialRoute: AppRoutes.splash,
-      
-       // ✅ FIXED: Only Flutter-supported locales for MaterialApp
-  locale: languageService.currentLocale,
-  supportedLocales: const [
-    material.Locale('en', 'US'),  // ✅ Only standard locales
-  ],
-      
+
+      // ✅ FIXED: Only Flutter-supported locales for MaterialApp
+      locale: languageService.currentLocale,
+      supportedLocales: const [
+        material.Locale('en', 'US'), // ✅ Only standard locales
+      ],
+
       // ✅ FIXED: Localization delegates for Material and Cupertino widgets
       localizationsDelegates: [
         GlobalMaterialLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      
+
       // ✅ FIXED: Handle unsupported locales (ha_NG, yo_NG, ig_NG, pcm_NG) gracefully
       localeResolutionCallback: (locale, supportedLocales) {
         // If the selected locale is supported, use it
@@ -94,17 +95,17 @@ class SwiftRideApp extends material.StatelessWidget {
         // Default to English if nothing matches
         return const material.Locale('en', 'US');
       },
-      
+
       // Theme configuration - switches between light and dark
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _getThemeMode(themeProvider),
-      
+
       // Routes
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
       onUnknownRoute: AppRoutes.onUnknownRoute,
-      
+
       // Builder to listen to system brightness changes
       builder: (context, child) {
         return material.MediaQuery(
@@ -135,12 +136,15 @@ class SwiftRideApp extends material.StatelessWidget {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: material.Colors.transparent,
-        statusBarIconBrightness: isDark ? material.Brightness.light : material.Brightness.dark,
-        statusBarBrightness: isDark ? material.Brightness.dark : material.Brightness.light,
-        systemNavigationBarColor: isDark 
-            ? const material.Color(0xFF0A0A0A) 
+        statusBarIconBrightness:
+            isDark ? material.Brightness.light : material.Brightness.dark,
+        statusBarBrightness:
+            isDark ? material.Brightness.dark : material.Brightness.light,
+        systemNavigationBarColor: isDark
+            ? const material.Color(0xFF0A0A0A)
             : const material.Color(0xFFFAFAFA),
-        systemNavigationBarIconBrightness: isDark ? material.Brightness.light : material.Brightness.dark,
+        systemNavigationBarIconBrightness:
+            isDark ? material.Brightness.light : material.Brightness.dark,
       ),
     );
   }
@@ -156,10 +160,12 @@ class _SystemBrightnessListener extends material.StatefulWidget {
   const _SystemBrightnessListener({required this.child});
 
   @override
-  material.State<_SystemBrightnessListener> createState() => _SystemBrightnessListenerState();
+  material.State<_SystemBrightnessListener> createState() =>
+      _SystemBrightnessListenerState();
 }
 
-class _SystemBrightnessListenerState extends material.State<_SystemBrightnessListener> with material.WidgetsBindingObserver {
+class _SystemBrightnessListenerState extends material
+    .State<_SystemBrightnessListener> with material.WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -175,11 +181,13 @@ class _SystemBrightnessListenerState extends material.State<_SystemBrightnessLis
   @override
   void didChangePlatformBrightness() {
     // System theme changed (user changed phone's dark mode setting)
-    final brightness = material.WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final brightness =
+        material.WidgetsBinding.instance.platformDispatcher.platformBrightness;
     material.debugPrint('📱 System brightness changed to: $brightness');
-    
+
     // Update theme provider
-    final themeProvider = Provider.of<theme_provider.ThemeProvider>(context, listen: false);
+    final themeProvider =
+        Provider.of<theme_provider.ThemeProvider>(context, listen: false);
     themeProvider.updateSystemBrightness(brightness);
   }
 

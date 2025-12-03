@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// Paystack Webview Screen
-/// Opens Paystack checkout for card payments
+/// Paystack Webview Screen - FIXED
+/// Properly detects payment completion and returns reference
 class PaystackWebviewScreen extends StatefulWidget {
   final String authorizationUrl;
   final String reference;
@@ -35,60 +35,61 @@ class _PaystackWebviewScreenState extends State<PaystackWebviewScreen> {
         NavigationDelegate(
           onPageStarted: (url) {
             setState(() => _isLoading = true);
-            _checkUrl(url);
+            debugPrint('Page started: $url');
+            _checkPaymentCompletion(url);
           },
           onPageFinished: (url) {
             setState(() => _isLoading = false);
+            debugPrint('Page finished: $url');
           },
           onWebResourceError: (error) {
-            debugPrint('❌ WebView error: ${error.description}');
+            debugPrint('WebView error: ${error.description}');
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.authorizationUrl));
   }
 
-  void _checkUrl(String url) {
-  debugPrint('🌐 URL: $url');
+  /// Check if payment has been completed
+  /// Paystack redirects to https://standard.paystack.co/close when payment is successful
+  void _checkPaymentCompletion(String url) {
+    if (_paymentCompleted) return;
 
-  if (_paymentCompleted) return;
+    debugPrint('Checking URL for payment completion: $url');
 
-  // Parse URL for better checking
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return;
 
-  // Payment completed - Paystack redirects to: https://standard.paystack.co/close
-  if (uri.host.contains('paystack.co')) {
-    // Check for close path with transaction reference
-    if (uri.path.contains('/close')) {
-      // Paystack adds trxref query parameter
-      final trxref = uri.queryParameters['trxref'];
-      
-      if (trxref != null && trxref == widget.reference) {
+      // CRITICAL: Check for Paystack close/success
+      // Paystack uses: https://standard.paystack.co/close
+      // or sometimes: https://standard.paystack.co/close?reference=DEP-XXX
+      if (url.contains('paystack.co') && url.contains('/close')) {
+        debugPrint('Payment successful - Paystack close URL detected');
         _paymentCompleted = true;
-        debugPrint('✅ Payment completed - reference match: $trxref');
-        Navigator.pop(context, {'success': true, 'reference': widget.reference});
+        
+        // Return the original reference we provided
+        // (Paystack confirms it was successful by redirecting to /close)
+        Navigator.pop(context, {
+          'success': true,
+          'reference': widget.reference,
+        });
         return;
       }
-      
-      // Fallback: if trxref is present but doesn't match, still consider success
-      // (edge case: Paystack might modify reference)
-      if (trxref != null && trxref.isNotEmpty) {
+
+      // Check for cancellation
+      if (url.contains('cancelled=true') || 
+          url.contains('/cancel') ||
+          url.contains('status=cancelled')) {
+        debugPrint('Payment cancelled');
         _paymentCompleted = true;
-        debugPrint('✅ Payment completed - reference: $trxref');
-        Navigator.pop(context, {'success': true, 'reference': trxref});
+        Navigator.pop(context, {'success': false});
         return;
       }
+    } catch (e) {
+      debugPrint('Error checking payment completion: $e');
     }
   }
-
-  // Check for explicit cancel
-  if (uri.path.contains('/cancel') || uri.queryParameters.containsKey('cancelled')) {
-    _paymentCompleted = true;
-    debugPrint('❌ Payment cancelled');
-    Navigator.pop(context, {'success': false});
-  }
-}
 
   @override
   Widget build(BuildContext context) {

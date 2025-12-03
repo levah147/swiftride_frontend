@@ -1,9 +1,7 @@
-
 // ==================== widgets/ride_cards/past_ride_card.dart ====================
 import 'package:flutter/material.dart';
 import 'package:swiftride/models/ride.dart';
-
-import '../../constants/app_dimensions.dart';
+import '../../../../constants/app_dimensions.dart';
 
 class PastRideCard extends StatelessWidget {
   final Ride ride;
@@ -23,6 +21,10 @@ class PastRideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🎨 Get theme colors
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     final DateTime rideDate = ride.completedAt ?? ride.createdAt;
     final String formattedDate = '${rideDate.day} ${_getMonthName(rideDate.month)}';
     final String formattedTime =
@@ -32,8 +34,11 @@ class PastRideCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppDimensions.paddingLarge),
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
       ),
       child: Row(
         children: [
@@ -41,7 +46,7 @@ class PastRideCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.grey[800],
+              color: colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -64,7 +69,7 @@ class PastRideCard extends StatelessWidget {
                     Text(
                       '$formattedDate • $formattedTime',
                       style: TextStyle(
-                        color: Colors.grey[400],
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
@@ -73,8 +78,8 @@ class PastRideCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${ride.pickupAddress} → ${ride.destinationAddress}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -84,8 +89,8 @@ class PastRideCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '₦${ride.fare?.toStringAsFixed(0) ?? '0'}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -96,7 +101,7 @@ class PastRideCard extends StatelessWidget {
           if (ride.status == RideStatus.completed)
             Icon(
               Icons.refresh,
-              color: Colors.grey[400],
+              color: colorScheme.onSurfaceVariant,
               size: 20,
             ),
         ],

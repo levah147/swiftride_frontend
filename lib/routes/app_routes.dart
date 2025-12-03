@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/auth_screen.dart';
 import '../screens/main/main_navigation_screen.dart';
-import '../screens/rides_booking/destination_selection_screen.dart';
-import '../screens/rides_booking/ride_options_screen.dart';
-import '../screens/rides_booking/driver_matching_screen.dart';
-import '../screens/rides_booking/ride_tracking_screen.dart';
-import '../screens/rides_booking/ride_completion_screen.dart';
+
+import '../presentation/screens/ride_booking/destination_selection_screen.dart';
+import '../presentation/screens/ride_booking/ride_options_screen.dart';
+import '../presentation/screens/ride_booking/driver_matching_screen.dart';
+import '../presentation/screens/ride_booking/ride_tracking_screen.dart';
+import '../presentation/screens/ride_booking/ride_completion_screen.dart';
 // Promotions imports
 import '../presentation/screens/promotions/promotions_home_screen.dart';
 import '../presentation/screens/promotions/referral_screen.dart';
@@ -106,10 +107,8 @@ class AppRoutes {
         if (args is DriverMatchingArguments) {
           return MaterialPageRoute(
             builder: (context) => DriverMatchingScreen(
-              from: args.from,
-              to: args.to,
-              rideType: args.rideType,
-              isScheduled: args.isScheduled,
+              rideId: args.rideId,  // ✅ CORRECT: Now available in args
+              from: args.from,      // ✅ CORRECT: Now LatLng type
             ),
             settings: settings,
           );
@@ -120,11 +119,8 @@ class AppRoutes {
         if (args is RideTrackingArguments) {
           return MaterialPageRoute(
             builder: (context) => RideTrackingScreen(
-              from: args.from,
-              to: args.to,
-              rideType: args.rideType,
-              driver: args.driver,
-            ),
+              rideId: args.rideId,  // ✅ CORRECT: Now available in args
+            ),  
             settings: settings,
           );
         }
