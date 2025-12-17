@@ -7,14 +7,14 @@ import 'package:swiftride/config/api_config.dart'; // Update with your app name
 class ApiClient {
   // Use dynamic URL from ApiConfig
   static String get baseUrl => ApiConfig.baseUrl;
-  
+
   static ApiClient? _instance;
-  
+
   ApiClient._internal() {
     // Print configuration on initialization
     ApiConfig.printConfig();
   }
-  
+
   static ApiClient get instance {
     _instance ??= ApiClient._internal();
     return _instance!;
@@ -23,7 +23,7 @@ class ApiClient {
   // ============================================
   // TOKEN MANAGEMENT
   // ============================================
-  
+
   Future<String?> _getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
@@ -48,10 +48,13 @@ class ApiClient {
     debugPrint('🗑️ Tokens cleared');
   }
 
+  /// Expose access token for services that need to build authenticated URLs (e.g., WebSockets).
+  Future<String?> getAccessToken() => _getAccessToken();
+
   // ============================================
   // HEADERS
   // ============================================
-  
+
   Map<String, String> _getHeaders({bool requiresAuth = false}) {
     return {
       'Content-Type': 'application/json',
@@ -79,7 +82,7 @@ class ApiClient {
   // ============================================
   // HTTP CLIENT WITH REDIRECT SUPPORT
   // ============================================
-  
+
   /// Create HTTP client that follows redirects
   http.Client _createClient() {
     return http.Client();
@@ -88,7 +91,7 @@ class ApiClient {
   // ============================================
   // HTTP METHODS
   // ============================================
-  
+
   Future<ApiResponse<T>> get<T>(
     String endpoint, {
     bool requiresAuth = true,
@@ -102,13 +105,12 @@ class ApiClient {
         uri = uri.replace(queryParameters: queryParams);
       }
 
-      final headers = requiresAuth 
-          ? await _getAuthHeaders() 
-          : _getHeaders();
-      
+      final headers = requiresAuth ? await _getAuthHeaders() : _getHeaders();
+
       debugPrint('📡 GET: $uri');
-      
-      final response = await client.get(uri, headers: headers)
+
+      final response = await client
+          .get(uri, headers: headers)
           .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
@@ -128,19 +130,19 @@ class ApiClient {
   }) async {
     final client = _createClient();
     try {
-      final headers = requiresAuth 
-          ? await _getAuthHeaders() 
-          : _getHeaders();
-      
+      final headers = requiresAuth ? await _getAuthHeaders() : _getHeaders();
+
       final uri = Uri.parse('$baseUrl$endpoint');
       debugPrint('📡 POST: $uri');
       debugPrint('📤 Data: ${jsonEncode(data)}');
-      
-      final response = await client.post(
-        uri,
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 30));
+
+      final response = await client
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
@@ -159,18 +161,18 @@ class ApiClient {
   }) async {
     final client = _createClient();
     try {
-      final headers = requiresAuth 
-          ? await _getAuthHeaders() 
-          : _getHeaders();
-      
+      final headers = requiresAuth ? await _getAuthHeaders() : _getHeaders();
+
       final uri = Uri.parse('$baseUrl$endpoint');
       debugPrint('📡 PUT: $uri');
-      
-      final response = await client.put(
-        uri,
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 30));
+
+      final response = await client
+          .put(
+            uri,
+            headers: headers,
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
@@ -189,18 +191,18 @@ class ApiClient {
   }) async {
     final client = _createClient();
     try {
-      final headers = requiresAuth 
-          ? await _getAuthHeaders() 
-          : _getHeaders();
-      
+      final headers = requiresAuth ? await _getAuthHeaders() : _getHeaders();
+
       final uri = Uri.parse('$baseUrl$endpoint');
       debugPrint('📡 PATCH: $uri');
-      
-      final response = await client.patch(
-        uri,
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 30));
+
+      final response = await client
+          .patch(
+            uri,
+            headers: headers,
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
@@ -218,17 +220,17 @@ class ApiClient {
   }) async {
     final client = _createClient();
     try {
-      final headers = requiresAuth 
-          ? await _getAuthHeaders() 
-          : _getHeaders();
-      
+      final headers = requiresAuth ? await _getAuthHeaders() : _getHeaders();
+
       final uri = Uri.parse('$baseUrl$endpoint');
       debugPrint('📡 DELETE: $uri');
-      
-      final response = await client.delete(
-        uri,
-        headers: headers,
-      ).timeout(const Duration(seconds: 30));
+
+      final response = await client
+          .delete(
+            uri,
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
@@ -242,7 +244,7 @@ class ApiClient {
   // ============================================
   // MULTIPART REQUESTS (For file uploads)
   // ============================================
-  
+
   Future<ApiResponse<T>> postMultipart<T>(
     String endpoint,
     Map<String, String> fields,
@@ -265,8 +267,8 @@ class ApiClient {
 
       debugPrint('📡 POST Multipart: $uri');
 
-      final streamedResponse = await request.send()
-          .timeout(const Duration(seconds: 60));
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamedResponse);
 
       return _handleResponse<T>(response, fromJson);
@@ -298,8 +300,8 @@ class ApiClient {
 
       debugPrint('📡 PATCH Multipart: $uri');
 
-      final streamedResponse = await request.send()
-          .timeout(const Duration(seconds: 60));
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamedResponse);
 
       return _handleResponse<T>(response, fromJson);
@@ -312,7 +314,7 @@ class ApiClient {
   // ============================================
   // RESPONSE HANDLING (Django DRF Optimized)
   // ============================================
-  
+
   ApiResponse<T> _handleResponse<T>(
     http.Response response,
     T Function(dynamic)? fromJson,
@@ -348,9 +350,10 @@ class ApiClient {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         // Extract and save tokens if present (for login/verify-otp)
         _extractAndSaveTokens(data);
-        
+
         if (fromJson != null) {
-          return ApiResponse.success(fromJson(data), statusCode: response.statusCode);
+          return ApiResponse.success(fromJson(data),
+              statusCode: response.statusCode);
         }
         return ApiResponse.success(data as T, statusCode: response.statusCode);
       }
@@ -362,7 +365,6 @@ class ApiClient {
         statusCode: response.statusCode,
         errorData: data,
       );
-      
     } catch (e) {
       debugPrint('❌ Response Parse Error: $e');
       return ApiResponse.error('Failed to parse response: ${e.toString()}');
@@ -372,7 +374,7 @@ class ApiClient {
   // ============================================
   // DJANGO DRF ERROR EXTRACTION
   // ============================================
-  
+
   String _extractErrorMessage(dynamic data) {
     if (data is Map<String, dynamic>) {
       // Django REST Framework common error fields
@@ -385,12 +387,12 @@ class ApiClient {
       if (data.containsKey('detail')) {
         return _extractNestedError(data['detail']);
       }
-      
+
       // Handle field-specific errors (e.g., {"phone_number": ["Invalid format"]})
       if (data.isNotEmpty) {
         final firstKey = data.keys.first;
         final firstError = data[firstKey];
-        
+
         if (firstError is List && firstError.isNotEmpty) {
           return '${_formatFieldName(firstKey)}: ${firstError.first}';
         }
@@ -400,11 +402,11 @@ class ApiClient {
         return firstError.toString();
       }
     }
-    
+
     if (data is String) {
       return data;
     }
-    
+
     return 'Unknown error occurred';
   }
 
@@ -425,18 +427,18 @@ class ApiClient {
   // ============================================
   // TOKEN EXTRACTION (Django JWT Format)
   // ============================================
-  
+
   Future<void> _extractAndSaveTokens(dynamic data) async {
     try {
       if (data is! Map<String, dynamic>) return;
-      
+
       // Django JWT format: { "tokens": { "access": "...", "refresh": "..." } }
       if (data.containsKey('tokens')) {
         final tokens = data['tokens'];
         if (tokens is Map<String, dynamic>) {
           final access = tokens['access']?.toString();
           final refresh = tokens['refresh']?.toString();
-          
+
           if (access != null && refresh != null) {
             await saveTokens(access, refresh);
             debugPrint('✅ Tokens extracted and saved');
@@ -444,7 +446,7 @@ class ApiClient {
           }
         }
       }
-      
+
       // Alternative format: { "access": "...", "refresh": "..." }
       if (data.containsKey('access') && data.containsKey('refresh')) {
         await saveTokens(
@@ -461,7 +463,7 @@ class ApiClient {
   // ============================================
   // TOKEN REFRESH
   // ============================================
-  
+
   Future<bool> refreshAccessToken() async {
     final client = _createClient();
     try {
@@ -472,7 +474,7 @@ class ApiClient {
       }
 
       debugPrint('🔄 Refreshing access token...');
-      
+
       final uri = Uri.parse('$baseUrl/auth/token/refresh/');
       final response = await client.post(
         uri,
@@ -489,7 +491,7 @@ class ApiClient {
           return true;
         }
       }
-      
+
       debugPrint('❌ Token refresh failed: ${response.statusCode}');
       return false;
     } catch (e) {
@@ -503,7 +505,7 @@ class ApiClient {
   // ============================================
   // HELPER METHOD - Check if logged in
   // ============================================
-  
+
   Future<bool> isLoggedIn() async {
     final token = await _getAccessToken();
     return token != null && token.isNotEmpty;
@@ -536,11 +538,12 @@ class ApiResponse<T> {
   bool get isNotFound => statusCode == 404;
   bool get isValidationError => statusCode == 400;
   bool get isServerError => statusCode != null && statusCode! >= 500;
-  bool get isRedirect => statusCode != null && statusCode! >= 301 && statusCode! <= 308;
-  
+  bool get isRedirect =>
+      statusCode != null && statusCode! >= 301 && statusCode! <= 308;
+
   // Get formatted error message
   String get errorMessage => error ?? 'Unknown error occurred';
-  
+
   @override
   String toString() {
     if (isSuccess) {

@@ -1,7 +1,10 @@
+
+// ==================== 2. app_routes.dart - UPDATED ====================
+
 import 'package:flutter/material.dart';
-import '../screens/splash_screen.dart';
-import '../screens/auth/auth_screen.dart';
-import '../screens/main/main_navigation_screen.dart';
+import '../splash_screen.dart';
+import '../auth/auth_screen.dart';
+import '../presentation/main_navigation_screen.dart';
 
 import '../presentation/screens/ride_booking/destination_selection_screen.dart';
 import '../presentation/screens/ride_booking/ride_options_screen.dart';
@@ -91,12 +94,18 @@ class AppRoutes {
         );
 
       case rideOptions:
+        // ✅ FIXED: Handle RideOptionsArguments with all required fields
         if (args is RideOptionsArguments) {
           return MaterialPageRoute(
             builder: (context) => RideOptionsScreen(
               from: args.from,
               to: args.to,
               isScheduled: args.isScheduled,
+              pickupLatLng: args.pickupLatLng,           // ✅ NOW INCLUDED
+              destinationLatLng: args.destinationLatLng, // ✅ NOW INCLUDED
+              pickupAddress: args.pickupAddress,         // ✅ NOW INCLUDED
+              destinationAddress: args.destinationAddress, // ✅ NOW INCLUDED
+              city: args.city,
             ),
             settings: settings,
           );
@@ -107,8 +116,8 @@ class AppRoutes {
         if (args is DriverMatchingArguments) {
           return MaterialPageRoute(
             builder: (context) => DriverMatchingScreen(
-              rideId: args.rideId,  // ✅ CORRECT: Now available in args
-              from: args.from,      // ✅ CORRECT: Now LatLng type
+              rideId: args.rideId,
+              from: args.from,
             ),
             settings: settings,
           );
@@ -119,7 +128,7 @@ class AppRoutes {
         if (args is RideTrackingArguments) {
           return MaterialPageRoute(
             builder: (context) => RideTrackingScreen(
-              rideId: args.rideId,  // ✅ CORRECT: Now available in args
+              rideId: args.rideId,
             ),  
             settings: settings,
           );
@@ -144,19 +153,17 @@ class AppRoutes {
 
       // Support routes with arguments
       case createTicket:
-        // Arguments are optional - can pass category to pre-select it
         final category = args != null && args is Map<String, dynamic>
             ? args['category'] as int?
             : null;
         return MaterialPageRoute(
           builder: (context) => CreateTicketScreen(
-          initialCategory: args as Map<String, dynamic>?,  // ✅ CORRECT TYPE
+          initialCategory: args as Map<String, dynamic>?,
           ),
           settings: settings,
         );
 
       case ticketDetail:
-        // Arguments are required - must pass ticketId
         if (args is Map<String, dynamic> && args.containsKey('ticketId')) {
           return MaterialPageRoute(
             builder: (context) => TicketDetailScreen(

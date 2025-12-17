@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../config/api_config.dart';
+import 'api_client.dart';
 
 class SocketService {
   static final SocketService _instance = SocketService._internal();
@@ -18,18 +20,26 @@ class SocketService {
   bool _isConnected = false;
 
   // Stream controllers for real-time updates
-  final _driverLocationController = StreamController<DriverLocationUpdate>.broadcast();
+  final _driverLocationController =
+      StreamController<DriverLocationUpdate>.broadcast();
   final _rideStatusController = StreamController<RideStatusUpdate>.broadcast();
-  final _driverMatchController = StreamController<DriverMatchUpdate>.broadcast();
+  final _driverMatchController =
+      StreamController<DriverMatchUpdate>.broadcast();
   final _chatMessageController = StreamController<ChatMessage>.broadcast();
   final _connectionStateController = StreamController<bool>.broadcast();
 
   // Public streams
-  Stream<DriverLocationUpdate> get driverLocationStream => _driverLocationController.stream;
+  Stream<DriverLocationUpdate> get driverLocationStream =>
+      _driverLocationController.stream;
   Stream<RideStatusUpdate> get rideStatusStream => _rideStatusController.stream;
-  Stream<DriverMatchUpdate> get driverMatchStream => _driverMatchController.stream;
+  Stream<DriverMatchUpdate> get driverMatchStream =>
+      _driverMatchController.stream;
   Stream<ChatMessage> get chatMessageStream => _chatMessageController.stream;
   Stream<bool> get connectionStateStream => _connectionStateController.stream;
+  
+  // ✅ ADDED: Connection status as string stream for compatibility
+  Stream<String> get connectionStatusStream => _connectionStateController.stream
+      .map((isConnected) => isConnected ? 'connected' : 'disconnected');
 
   bool get isConnected => _isConnected;
   String? get currentRideId => _currentRideId;
@@ -51,7 +61,7 @@ class SocketService {
 
       // Build WebSocket URL
       final wsUrl = _buildWebSocketUrl(rideId, authToken);
-      
+
       // Create WebSocket connection
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
@@ -65,7 +75,7 @@ class SocketService {
 
       _isConnected = true;
       _connectionStateController.add(true);
-      
+
       debugPrint('✅ WebSocket connected to ride: $rideId');
 
       // Send initial authentication/connection message
@@ -74,7 +84,6 @@ class SocketService {
         'ride_id': rideId,
         'timestamp': DateTime.now().toIso8601String(),
       });
-
     } catch (e) {
       debugPrint('❌ WebSocket connection error: $e');
       _isConnected = false;
@@ -85,25 +94,22 @@ class SocketService {
 
   /// Build WebSocket URL based on environment
   String _buildWebSocketUrl(String rideId, String authToken) {
-    // TODO: Replace with your actual backend WebSocket URL
-    const baseUrl = kDebugMode
-        ? 'ws://10.0.2.2:8000' // Android emulator localhost
-        : 'wss://api.swiftride.com'; // Production
-
-    return '$baseUrl/ws/ride/$rideId/?token=$authToken';
+    // Use configured WebSocket base (already includes `/ws`)
+    final base = ApiConfig.wsUrl; // e.g. wss://swiftride.../ws
+    return '$base/ride/$rideId/?token=$authToken';
   }
 
   /// Disconnect from WebSocket
   Future<void> disconnect() async {
     if (_channel != null) {
       debugPrint('🔌 Disconnecting WebSocket');
-      
+
       await _channel!.sink.close();
       _channel = null;
       _currentRideId = null;
       _isConnected = false;
       _connectionStateController.add(false);
-      
+
       debugPrint('✅ WebSocket disconnected');
     }
   }
@@ -124,35 +130,35 @@ class SocketService {
         case 'driver_location':
           _handleDriverLocation(data);
           break;
-        
+
         case 'ride_status':
           _handleRideStatus(data);
           break;
-        
+
         case 'driver_matched':
           _handleDriverMatched(data);
           break;
-        
+
         case 'chat_message':
           _handleChatMessage(data);
           break;
-        
+
         case 'driver_arrived':
           _handleDriverArrived(data);
           break;
-        
+
         case 'ride_started':
           _handleRideStarted(data);
           break;
-        
+
         case 'ride_completed':
           _handleRideCompleted(data);
           break;
-        
+
         case 'error':
           debugPrint('❌ WebSocket error: ${data['message']}');
           break;
-        
+
         default:
           debugPrint('⚠️ Unknown message type: $type');
       }
@@ -270,6 +276,25 @@ class SocketService {
     });
   }
 
+  /// Send driver location update (for driver side)
+  void sendDriverLocation({
+    required double latitude,
+    required double longitude,
+    double? heading,
+    double? speed,
+    String? rideId,
+  }) {
+    _sendMessage({
+      'type': 'driver_location',
+      'latitude': latitude,
+      'longitude': longitude,
+      if (heading != null) 'heading': heading,
+      if (speed != null) 'speed': speed,
+      if (rideId != null) 'ride_id': rideId,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
   // ============================================
   // CLEANUP
   // ============================================
@@ -283,6 +308,13 @@ class SocketService {
     await _chatMessageController.close();
     await _connectionStateController.close();
   }
+}
+
+/// Helper to fetch token for sockets
+class SocketAuthProvider {
+  final ApiClient _apiClient = ApiClient.instance;
+
+  Future<String?> getToken() => _apiClient.getAccessToken();
 }
 
 // ============================================
@@ -314,7 +346,8 @@ class DriverLocationUpdate {
       ),
       heading: json['heading']?.toDouble(),
       speed: json['speed']?.toDouble(),
-      timestamp: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
     );
   }
 }
@@ -336,7 +369,8 @@ class RideStatusUpdate {
   factory RideStatusUpdate.fromJson(Map<String, dynamic> json) {
     return RideStatusUpdate(
       status: json['status'] ?? '',
-      timestamp: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
       message: json['message'],
       data: json['data'],
     );
@@ -347,7 +381,11 @@ class RideStatusUpdate {
 class DriverMatchUpdate {
   final String driverId;
   final String driverName;
+  final String driverPhone;
+  final double driverRating;
+  final String vehicleType;
   final String vehicleModel;
+  final String vehicleColor;
   final String licensePlate;
   final double rating;
   final int eta; // ETA in minutes
@@ -356,7 +394,11 @@ class DriverMatchUpdate {
   DriverMatchUpdate({
     required this.driverId,
     required this.driverName,
+    required this.driverPhone,
+    required this.driverRating,
+    required this.vehicleType,
     required this.vehicleModel,
+    required this.vehicleColor,
     required this.licensePlate,
     required this.rating,
     required this.eta,
@@ -367,13 +409,18 @@ class DriverMatchUpdate {
     return DriverMatchUpdate(
       driverId: json['driver_id'] ?? '',
       driverName: json['driver_name'] ?? '',
+      driverPhone: json['driver_phone'] ?? '',
+      driverRating: (json['driver_rating'] ?? 5.0).toDouble(),
+      vehicleType: json['vehicle_type'] ?? '',
       vehicleModel: json['vehicle_model'] ?? '',
+      vehicleColor: json['vehicle_color'] ?? '',
       licensePlate: json['license_plate'] ?? '',
       rating: (json['rating'] ?? 5.0).toDouble(),
       eta: json['eta'] ?? 0,
-      driverLocation: json['driver_latitude'] != null && json['driver_longitude'] != null
-          ? LatLng(json['driver_latitude'], json['driver_longitude'])
-          : null,
+      driverLocation:
+          json['driver_latitude'] != null && json['driver_longitude'] != null
+              ? LatLng(json['driver_latitude'], json['driver_longitude'])
+              : null,
     );
   }
 }
@@ -394,7 +441,8 @@ class ChatMessage {
     return ChatMessage(
       sender: json['sender'] ?? '',
       message: json['message'] ?? '',
-      timestamp: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
     );
   }
 

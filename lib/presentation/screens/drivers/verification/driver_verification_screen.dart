@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:swiftride/services/api_client.dart';
-import '../../constants/colors.dart';
-import '../../constants/app_dimensions.dart';
-import '../../services/driver_service.dart';
+import '../../../../constants/colors.dart';
+import '../../../../constants/app_dimensions.dart';
+import '../../../../services/driver_service.dart';
 
 class DriverVerificationScreen extends StatefulWidget {
   const DriverVerificationScreen({super.key});

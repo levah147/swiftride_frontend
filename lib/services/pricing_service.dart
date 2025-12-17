@@ -26,7 +26,7 @@ class PricingService {
       }
 
       return await _apiClient.get<List<VehicleType>>(
-        '/pricing/types/',
+        '/pricing/vehicle-types/',
         queryParams: queryParams,
         fromJson: (json) {
           if (json is List) {
@@ -48,7 +48,7 @@ class PricingService {
       debugPrint('🚗 Fetching vehicle type: $vehicleTypeId');
       
       return await _apiClient.get<VehicleType>(
-        '/pricing/types/$vehicleTypeId/',
+        '/pricing/vehicle-types/$vehicleTypeId/',
         fromJson: (json) => VehicleType.fromJson(json),
       );
     } catch (e) {

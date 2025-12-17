@@ -12,6 +12,8 @@ import '../../../../services/ride_service.dart';
 import '../../../../services/pricing_service.dart';
 import '../../../../services/map_service.dart';
 import '../../../../services/socket_service.dart';
+import '../../../../services/location_service.dart';
+import '../../../../services/geocoding_service.dart'; // ✅ ADD: For city detection
 
 enum BookingStage {
   selectingDestination,
@@ -31,6 +33,9 @@ class RideBookingController extends ChangeNotifier {
   final PricingService _pricingService = PricingService();
   final MapService _mapService = MapService();
   final SocketService _socketService = SocketService();
+  final SocketAuthProvider _socketAuthProvider = SocketAuthProvider();
+  final LocationService _locationService = LocationService();
+  final GeocodingService _geocodingService = GeocodingService(); // ✅ ADD: For reverse geocoding
 
   // Booking stage
   BookingStage _currentStage = BookingStage.selectingDestination;
@@ -41,14 +46,15 @@ class RideBookingController extends ChangeNotifier {
   LatLng? _destinationLocation;
   String? _destinationAddress;
   List<RideStop>? _stops;
+  String? _cityName;
 
   // Route data
   RouteInfo? _routeInfo;
-  
+
   // Vehicle selection
   VehicleType? _selectedVehicle;
   List<VehicleType> _availableVehicles = [];
-  
+
   // Pricing
   double? _estimatedFare;
   String? _fareHash;
@@ -58,16 +64,16 @@ class RideBookingController extends ChangeNotifier {
   // Active ride
   Ride? _activeRide;
   DriverLocationUpdate? _driverLocation;
-  
+
   // Payment
   String _paymentMethod = 'cash';
-  
+
   // Loading states
   bool _isLoadingRoute = false;
   bool _isCalculatingFare = false;
   bool _isBookingRide = false;
   bool _isSearchingDriver = false;
-  
+
   // Error
   String? _errorMessage;
 
@@ -78,6 +84,7 @@ class RideBookingController extends ChangeNotifier {
   LatLng? get destinationLocation => _destinationLocation;
   String? get destinationAddress => _destinationAddress;
   List<RideStop>? get stops => _stops;
+  String? get cityName => _cityName;
   RouteInfo? get routeInfo => _routeInfo;
   VehicleType? get selectedVehicle => _selectedVehicle;
   List<VehicleType> get availableVehicles => _availableVehicles;
@@ -94,11 +101,12 @@ class RideBookingController extends ChangeNotifier {
   bool get isSearchingDriver => _isSearchingDriver;
   bool get isLoading => _isLoadingRoute || _isCalculatingFare || _isBookingRide;
   String? get errorMessage => _errorMessage;
-  
+  String? get error => _errorMessage; // ✅ ADD: Alias for compatibility
+
   // Computed
-  bool get canProceedToVehicleSelection => 
+  bool get canProceedToVehicleSelection =>
       _pickupLocation != null && _destinationLocation != null;
-  bool get canConfirmBooking => 
+  bool get canConfirmBooking =>
       _selectedVehicle != null && _estimatedFare != null && _fareHash != null;
 
   // ============================================
@@ -106,10 +114,14 @@ class RideBookingController extends ChangeNotifier {
   // ============================================
 
   /// Set pickup location
-  void setPickupLocation(LatLng location, String address) {
+  Future<void> setPickupLocation(LatLng location, String address) async {
     _pickupLocation = location;
     _pickupAddress = address;
     debugPrint('📍 Pickup set: $address');
+    
+    // Detect city from pickup location
+    await _detectCity(location);
+    
     notifyListeners();
   }
 
@@ -123,7 +135,64 @@ class RideBookingController extends ChangeNotifier {
     // Automatically calculate route
     if (_pickupLocation != null) {
       await calculateRoute();
+      
+      // Load vehicles after route is calculated
+      if (_cityName != null) {
+        await loadAvailableVehicles(_cityName!);
+      } else {
+        // Fallback: Load default vehicles
+        debugPrint('⚠️ No city detected, loading default vehicles');
+        await loadAvailableVehicles('Makurdi'); // Default city
+      }
     }
+  }
+
+  /// ✅ FIXED: Detect city from coordinates using GeocodingService
+  Future<void> _detectCity(LatLng location) async {
+    try {
+      debugPrint('🔍 Detecting city from coordinates...');
+      
+      // Use GeocodingService to reverse geocode
+      final address = await _geocodingService.reverseGeocode(location);
+      
+      if (address != null && address.city != null) {
+        _cityName = address.city;
+        debugPrint('🏙️ City detected: $_cityName');
+      } else {
+        debugPrint('⚠️ Could not detect city from coordinates');
+        // Fallback: Extract from address string or use default
+        _cityName = _extractCityFromAddress(_pickupAddress);
+        
+        if (_cityName == null) {
+          debugPrint('⚠️ Using default city: Makurdi');
+          _cityName = 'Makurdi'; // Default fallback
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ City detection error: $e');
+      // Fallback to extracting from address
+      _cityName = _extractCityFromAddress(_pickupAddress) ?? 'Makurdi';
+    }
+  }
+
+  /// ✅ ADD: Extract city name from address string
+  String? _extractCityFromAddress(String? address) {
+    if (address == null) return null;
+    
+    // Common Nigerian cities
+    const cities = [
+      'Lagos', 'Abuja', 'Kano', 'Ibadan', 'Port Harcourt',
+      'Benin', 'Kaduna', 'Jos', 'Enugu', 'Makurdi',
+      'Warri', 'Calabar', 'Maiduguri', 'Aba', 'Onitsha',
+    ];
+    
+    for (final city in cities) {
+      if (address.toLowerCase().contains(city.toLowerCase())) {
+        return city;
+      }
+    }
+    
+    return null;
   }
 
   /// Add a stop
@@ -136,7 +205,7 @@ class RideBookingController extends ChangeNotifier {
     ));
     debugPrint('➕ Stop added: $address');
     notifyListeners();
-    
+
     // Recalculate route with stops
     calculateRoute();
   }
@@ -176,7 +245,8 @@ class RideBookingController extends ChangeNotifier {
       );
 
       _routeInfo = route;
-      debugPrint('✅ Route calculated: ${route.formattedDistance}, ${route.formattedDuration}');
+      debugPrint(
+          '✅ Route calculated: ${route.formattedDistance}, ${route.formattedDuration}');
 
       _isLoadingRoute = false;
       notifyListeners();
@@ -184,10 +254,9 @@ class RideBookingController extends ChangeNotifier {
       // Move to vehicle selection
       _currentStage = BookingStage.selectingVehicle;
       notifyListeners();
-
     } catch (e) {
       debugPrint('❌ Route calculation error: $e');
-      _errorMessage = 'Could not calculate route';
+      _errorMessage = 'Could not calculate route: ${e.toString()}';
       _isLoadingRoute = false;
       notifyListeners();
     }
@@ -200,15 +269,27 @@ class RideBookingController extends ChangeNotifier {
   /// Load available vehicles
   Future<void> loadAvailableVehicles(String cityName) async {
     try {
-      final response = await _pricingService.getVehicleTypes(cityName: cityName);
+      debugPrint('🚗 Loading vehicles for city: $cityName');
       
+      final response = await _pricingService.getVehicleTypes(cityName: cityName);
+
       if (response.isSuccess && response.data != null) {
         _availableVehicles = response.data!.where((v) => v.available).toList();
-        debugPrint('✅ Loaded ${_availableVehicles.length} vehicles');
+        debugPrint('✅ Loaded ${_availableVehicles.length} available vehicles');
+        notifyListeners();
+      } else {
+        debugPrint('⚠️ API returned no vehicles, using fallback');
+        // Fallback: Use local vehicle types
+        _availableVehicles = VehicleTypes.getVehiclesForCity(cityName);
+        debugPrint('✅ Loaded ${_availableVehicles.length} fallback vehicles');
         notifyListeners();
       }
     } catch (e) {
       debugPrint('❌ Error loading vehicles: $e');
+      // Fallback: Use local vehicle types
+      _availableVehicles = VehicleTypes.getVehiclesForCity(cityName);
+      debugPrint('✅ Using ${_availableVehicles.length} fallback vehicles');
+      notifyListeners();
     }
   }
 
@@ -221,6 +302,17 @@ class RideBookingController extends ChangeNotifier {
     // Calculate fare
     await calculateFare();
   }
+  
+  /// Set vehicle type by ID (for when vehicle is selected from UI)
+  void setVehicleType(String vehicleTypeId) {
+    final vehicle = _availableVehicles.firstWhere(
+      (v) => v.id == vehicleTypeId,
+      orElse: () => _availableVehicles.first,
+    );
+    _selectedVehicle = vehicle;
+    debugPrint('🚗 Vehicle type set: ${vehicle.name}');
+    notifyListeners();
+  }
 
   // ============================================
   // FARE CALCULATION
@@ -228,57 +320,52 @@ class RideBookingController extends ChangeNotifier {
 
   /// Calculate fare for selected vehicle
   Future<void> calculateFare() async {
-    if (_selectedVehicle == null || _routeInfo == null) return;
+    if (_selectedVehicle == null || _pickupLocation == null || _destinationLocation == null) {
+      debugPrint('⚠️ Cannot calculate fare: missing required data');
+      return;
+    }
 
     try {
       _isCalculatingFare = true;
       _errorMessage = null;
       notifyListeners();
 
-      debugPrint('💰 Calculating fare...');
+      debugPrint('💰 Calculating fare for ${_selectedVehicle!.name}...');
 
       final response = await _pricingService.calculateFare(
-        vehicleType: _selectedVehicle!.id,  // ✅ Correct parameter name
+        vehicleType: _selectedVehicle!.id,
         pickupLatitude: _pickupLocation!.latitude,
         pickupLongitude: _pickupLocation!.longitude,
         destinationLatitude: _destinationLocation!.latitude,
         destinationLongitude: _destinationLocation!.longitude,
-        cityName: null,  // TODO: Get from user location context
+        cityName: _cityName,
       );
 
       if (response.isSuccess && response.data != null) {
         final fareCalc = response.data!;
-        _estimatedFare = fareCalc.totalFare;  // ✅ Use totalFare from FareCalculation
-        _fareHash = fareCalc.fareHash;        // ✅ Use fareHash from FareCalculation
-        // Note: FareCalculation doesn't have discount field, only surgeMultiplier
+        _estimatedFare = fareCalc.totalFare;
+        _fareHash = fareCalc.fareHash;
         
+        // Check if there's a surge multiplier
+        if (fareCalc.surgeMultiplier > 1.0) {
+          debugPrint('⚡ Surge pricing active: ${fareCalc.surgeMultiplier}x');
+        }
+
         debugPrint('✅ Fare calculated: ${fareCalc.formattedTotal}');
+        debugPrint('   - Base fare: ₦${fareCalc.baseFare.toStringAsFixed(0)}');
+        debugPrint('   - Distance fare: ₦${fareCalc.distanceFare.toStringAsFixed(0)}');
+        debugPrint('   - Time fare: ₦${fareCalc.timeFare.toStringAsFixed(0)}');
+        debugPrint('   - Fare hash: $_fareHash');
+      } else {
+        _errorMessage = response.error ?? 'Could not calculate fare';
+        debugPrint('❌ Fare calculation failed: $_errorMessage');
       }
-
-
-
-      //  final response = await _pricingService.calculateFare(
-      //   vehicle_type_id: _selectedVehicle!.id,
-      //   distance: _routeInfo!.distanceInKm,
-      //   duration: _routeInfo!.durationInMinutes,
-      //   promo_code: _promoCode,
-      // );
-
-      // if (response.isSuccess && response.data != null) {
-      //   final fareData = response.data!;
-      //   _estimatedFare = fareData['total_fare'];
-      //   _fareHash = fareData['fare_hash'];
-      //   _discount = fareData['discount'];
-        
-      //   debugPrint('✅ Fare calculated: ₦${_estimatedFare!.toStringAsFixed(0)}');
-      // }
 
       _isCalculatingFare = false;
       notifyListeners();
-
     } catch (e) {
       debugPrint('❌ Fare calculation error: $e');
-      _errorMessage = 'Could not calculate fare';
+      _errorMessage = 'Could not calculate fare: ${e.toString()}';
       _isCalculatingFare = false;
       notifyListeners();
     }
@@ -286,7 +373,12 @@ class RideBookingController extends ChangeNotifier {
 
   /// Apply promo code
   Future<void> applyPromoCode(String code) async {
+    if (code.isEmpty) return;
+    
     _promoCode = code;
+    debugPrint('🎟️ Applying promo code: $code');
+    
+    // Recalculate fare with promo code
     await calculateFare();
   }
 
@@ -303,7 +395,24 @@ class RideBookingController extends ChangeNotifier {
 
   /// Book the ride
   Future<bool> bookRide(String userId) async {
-    if (!canConfirmBooking) return false;
+    // Validate ALL required fields
+    if (_pickupLocation == null || 
+        _destinationLocation == null || 
+        _pickupAddress == null || 
+        _destinationAddress == null ||
+        _selectedVehicle == null ||
+        _fareHash == null) {
+      _errorMessage = 'Missing required booking information';
+      debugPrint('❌ Cannot book: $_errorMessage');
+      debugPrint('   - Pickup location: ${_pickupLocation != null ? "✓" : "✗"}');
+      debugPrint('   - Pickup address: ${_pickupAddress != null ? "✓" : "✗"}');
+      debugPrint('   - Destination location: ${_destinationLocation != null ? "✓" : "✗"}');
+      debugPrint('   - Destination address: ${_destinationAddress != null ? "✓" : "✗"}');
+      debugPrint('   - Vehicle: ${_selectedVehicle != null ? "✓" : "✗"}');
+      debugPrint('   - Fare hash: ${_fareHash != null ? "✓" : "✗"}');
+      notifyListeners();
+      return false;
+    }
 
     try {
       _isBookingRide = true;
@@ -312,8 +421,12 @@ class RideBookingController extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('📱 Booking ride...');
+      debugPrint('   - Vehicle: ${_selectedVehicle!.name}');
+      debugPrint('   - From: $_pickupAddress');
+      debugPrint('   - To: $_destinationAddress');
+      debugPrint('   - City: ${_cityName ?? "Not detected"}');
+      debugPrint('   - Estimated fare: ₦${_estimatedFare?.toStringAsFixed(0)}');
 
-      // Call bookRide with individual named parameters
       final response = await _rideService.bookRide(
         vehicleType: _selectedVehicle!.id,
         pickupLocation: _pickupAddress!,
@@ -323,33 +436,34 @@ class RideBookingController extends ChangeNotifier {
         destinationLatitude: _destinationLocation!.latitude,
         destinationLongitude: _destinationLocation!.longitude,
         fareHash: _fareHash!,
-        // Optional parameters
-        cityName: null, // TODO: Get from user location context
-        scheduledTime: null, // TODO: Handle scheduled rides if needed
+        cityName: _cityName,
+        scheduledTime: null,
       );
 
       if (response.isSuccess && response.data != null) {
         _activeRide = response.data;
-        debugPrint('✅ Ride booked: ${_activeRide!.id}');
+        debugPrint('✅ Ride booked successfully!');
+        debugPrint('   - Ride ID: ${_activeRide!.id}');
+        debugPrint('   - Status: ${_activeRide!.status.displayName}');
 
-        // Connect to WebSocket
+        // Connect to WebSocket for real-time updates
         await _connectToRideSocket(_activeRide!.id);
 
         _isBookingRide = false;
         _currentStage = BookingStage.searchingDriver;
         notifyListeners();
-        
+
         return true;
       } else {
         _errorMessage = response.error ?? 'Booking failed';
+        debugPrint('❌ Booking failed: $_errorMessage');
         _isBookingRide = false;
         notifyListeners();
         return false;
       }
-
     } catch (e) {
       debugPrint('❌ Booking error: $e');
-      _errorMessage = 'Could not book ride';
+      _errorMessage = 'Could not book ride: ${e.toString()}';
       _isBookingRide = false;
       notifyListeners();
       return false;
@@ -363,38 +477,66 @@ class RideBookingController extends ChangeNotifier {
   /// Connect to ride WebSocket
   Future<void> _connectToRideSocket(String rideId) async {
     try {
-      // TODO: Get auth token from secure storage
-      const authToken = 'YOUR_AUTH_TOKEN';
+      debugPrint('🔌 Connecting to ride WebSocket...');
       
+      // Fetch stored JWT for socket authentication
+      final authToken = await _socketAuthProvider.getToken();
+      if (authToken == null) {
+        debugPrint('❌ Cannot connect WS: missing auth token');
+        _errorMessage = 'Authentication required';
+        return;
+      }
+
       await _socketService.connectToRide(rideId, authToken);
 
       // Listen to driver location updates
-      _socketService.driverLocationStream.listen((update) {
-        _driverLocation = update;
-        notifyListeners();
-      });
+      _socketService.driverLocationStream.listen(
+        (update) {
+          _driverLocation = update;
+          debugPrint('📍 Driver location updated');
+          notifyListeners();
+        },
+        onError: (error) {
+          debugPrint('❌ Driver location stream error: $error');
+        },
+      );
 
       // Listen to ride status updates
-      _socketService.rideStatusStream.listen((update) {
-        _handleRideStatusUpdate(update);
-      });
+      _socketService.rideStatusStream.listen(
+        (update) {
+          _handleRideStatusUpdate(update);
+        },
+        onError: (error) {
+          debugPrint('❌ Ride status stream error: $error');
+        },
+      );
 
       // Listen to driver match
-      _socketService.driverMatchStream.listen((match) {
-        _handleDriverMatched(match);
-      });
+      _socketService.driverMatchStream.listen(
+        (match) {
+          _handleDriverMatched(match);
+        },
+        onError: (error) {
+          debugPrint('❌ Driver match stream error: $error');
+        },
+      );
 
-      debugPrint('✅ Connected to ride WebSocket');
+      debugPrint('✅ Connected to ride WebSocket successfully');
     } catch (e) {
       debugPrint('❌ WebSocket connection error: $e');
+      _errorMessage = 'Could not connect to real-time updates';
     }
   }
 
   void _handleRideStatusUpdate(RideStatusUpdate update) {
-    debugPrint('📡 Ride status: ${update.status}');
-    
+    debugPrint('📡 Ride status update: ${update.status}');
+
     switch (update.status) {
+      case 'accepted':
+        _currentStage = BookingStage.driverMatched;
+        break;
       case 'driver_arrived':
+      case 'arriving':
         _currentStage = BookingStage.driverArriving;
         break;
       case 'in_progress':
@@ -406,13 +548,22 @@ class RideBookingController extends ChangeNotifier {
       case 'cancelled':
         _currentStage = BookingStage.cancelled;
         break;
+      default:
+        debugPrint('⚠️ Unknown ride status: ${update.status}');
     }
-    
+
     notifyListeners();
   }
 
   void _handleDriverMatched(DriverMatchUpdate match) {
-    debugPrint('✅ Driver matched: ${match.driverName}');
+    debugPrint('✅ Driver matched!');
+    debugPrint('   - Name: ${match.driverName}');
+    debugPrint('   - Phone: ${match.driverPhone}');
+    debugPrint('   - Rating: ${match.driverRating}');
+    debugPrint('   - Vehicle: ${match.vehicleModel} (${match.vehicleColor})');
+    debugPrint('   - License: ${match.licensePlate}');
+    debugPrint('   - ETA: ${match.eta} minutes'); // ✅ FIXED: Changed from etaMinutes to eta
+    
     _currentStage = BookingStage.driverMatched;
     notifyListeners();
   }
@@ -423,28 +574,43 @@ class RideBookingController extends ChangeNotifier {
 
   /// Cancel active ride
   Future<bool> cancelRide(String reason) async {
-    if (_activeRide == null) return false;
+    if (_activeRide == null) {
+      debugPrint('⚠️ No active ride to cancel');
+      return false;
+    }
 
     try {
-      // cancelRide takes rideId and optional reason parameter
+      debugPrint('🚫 Cancelling ride: ${_activeRide!.id}');
+      debugPrint('   - Reason: $reason');
+      
       final response = await _rideService.cancelRide(
         _activeRide!.id,
         reason: reason,
       );
-      
+
       if (response.isSuccess) {
-        _socketService.cancelRide(reason);
-        await _socketService.disconnect();
+        debugPrint('✅ Ride cancelled successfully');
         
+        // Notify via WebSocket
+        _socketService.cancelRide(reason);
+        
+        // Disconnect WebSocket
+        await _socketService.disconnect();
+
         _currentStage = BookingStage.cancelled;
         notifyListeners();
-        
+
         return true;
+      } else {
+        debugPrint('❌ Cancellation failed: ${response.error}');
+        _errorMessage = response.error ?? 'Could not cancel ride';
+        notifyListeners();
+        return false;
       }
-      
-      return false;
     } catch (e) {
       debugPrint('❌ Cancel error: $e');
+      _errorMessage = 'Could not cancel ride: ${e.toString()}';
+      notifyListeners();
       return false;
     }
   }
@@ -455,14 +621,18 @@ class RideBookingController extends ChangeNotifier {
 
   /// Reset booking flow
   void reset() {
+    debugPrint('🔄 Resetting booking controller...');
+    
     _currentStage = BookingStage.selectingDestination;
     _pickupLocation = null;
     _pickupAddress = null;
     _destinationLocation = null;
     _destinationAddress = null;
+    _cityName = null;
     _stops = null;
     _routeInfo = null;
     _selectedVehicle = null;
+    _availableVehicles = [];
     _estimatedFare = null;
     _fareHash = null;
     _promoCode = null;
@@ -471,8 +641,12 @@ class RideBookingController extends ChangeNotifier {
     _driverLocation = null;
     _paymentMethod = 'cash';
     _errorMessage = null;
-    
-    debugPrint('🔄 Booking controller reset');
+    _isLoadingRoute = false;
+    _isCalculatingFare = false;
+    _isBookingRide = false;
+    _isSearchingDriver = false;
+
+    debugPrint('✅ Booking controller reset complete');
     notifyListeners();
   }
 
@@ -482,8 +656,8 @@ class RideBookingController extends ChangeNotifier {
 
   @override
   void dispose() {
+    debugPrint('🗑️ Disposing ride booking controller...');
     _socketService.disconnect();
-    debugPrint('🗑️ Disposing ride booking controller');
     super.dispose();
   }
 }

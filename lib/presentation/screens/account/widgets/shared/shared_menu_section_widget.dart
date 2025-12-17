@@ -18,8 +18,8 @@
 import 'package:flutter/material.dart';
 import '../../../../../constants/app_strings.dart';
 import '../../../../../constants/app_dimensions.dart';
-import '../../../../../widgets/common/menu_section_widget.dart';
-import '../../../../../widgets/common/menu_item_widget.dart';
+import '../common/menu_section_widget.dart';
+import '../common/menu_item_widget.dart';
 import '../../../wallet/wallet_screen.dart';
 import '../../../support/support_home_screen.dart';
 

@@ -1,3 +1,6 @@
+// ==================== services/navigation_service.dart ====================
+// NAVIGATION SERVICE - Fixed to support real location data
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../routes/app_routes.dart';
@@ -35,11 +38,16 @@ class NavigationService {
     _navigator?.pushNamed(AppRoutes.destinationSelection);
   }
 
-  // Ride booking flow
+  // ✅ FIXED: Updated to include coordinates
   void goToRideOptions({
     required String from,
     required String to,
     required bool isScheduled,
+    required LatLng pickupLatLng,           // ✅ ADDED
+    required LatLng destinationLatLng,      // ✅ ADDED
+    required String pickupAddress,          // ✅ ADDED
+    required String destinationAddress,     // ✅ ADDED
+    String? city,
   }) {
     _navigator?.pushNamed(
       AppRoutes.rideOptions,
@@ -47,23 +55,28 @@ class NavigationService {
         from: from,
         to: to,
         isScheduled: isScheduled,
+        pickupLatLng: pickupLatLng,         // ✅ ADDED
+        destinationLatLng: destinationLatLng, // ✅ ADDED
+        pickupAddress: pickupAddress,       // ✅ ADDED
+        destinationAddress: destinationAddress, // ✅ ADDED
+        city: city,
       ),
     );
   }
 
-  // ✅ FIXED: Updated to match DriverMatchingArguments signature
+  // ✅ CORRECT: Already matches DriverMatchingArguments
   void goToDriverMatching({
-    required String rideId,           // ✅ ADDED
-    required LatLng from,             // ✅ CHANGED: String → LatLng
-    required String to,               // Keep as String
+    required String rideId,
+    required LatLng from,
+    required String to,
     required Map<String, dynamic> rideType,
     required bool isScheduled,
   }) {
     _navigator?.pushNamed(
       AppRoutes.driverMatching,
       arguments: DriverMatchingArguments(
-        rideId: rideId,               // ✅ ADDED
-        from: from,                   // ✅ Now LatLng type
+        rideId: rideId,
+        from: from,
         to: to,
         rideType: rideType,
         isScheduled: isScheduled,
@@ -71,9 +84,9 @@ class NavigationService {
     );
   }
 
-  // ✅ FIXED: Updated to match RideTrackingArguments signature
+  // ✅ CORRECT: Already matches RideTrackingArguments
   void goToRideTracking({
-    required String rideId,           // ✅ ADDED
+    required String rideId,
     required String from,
     required String to,
     required Map<String, dynamic> rideType,
@@ -82,7 +95,7 @@ class NavigationService {
     _navigator?.pushReplacementNamed(
       AppRoutes.rideTracking,
       arguments: RideTrackingArguments(
-        rideId: rideId,               // ✅ ADDED
+        rideId: rideId,
         from: from,
         to: to,
         rideType: rideType,
@@ -91,9 +104,9 @@ class NavigationService {
     );
   }
 
-  // ✅ FIXED: Updated to match RideCompletionArguments signature
+  // ✅ CORRECT: Already matches RideCompletionArguments
   void goToRideCompletion({
-    required String rideId,           // ✅ ADDED
+    required String rideId,
     required String from,
     required String to,
     required Map<String, dynamic> rideType,
@@ -104,7 +117,7 @@ class NavigationService {
     _navigator?.pushReplacementNamed(
       AppRoutes.rideCompletion,
       arguments: RideCompletionArguments(
-        rideId: rideId,               // ✅ ADDED
+        rideId: rideId,
         from: from,
         to: to,
         rideType: rideType,
@@ -147,5 +160,87 @@ class NavigationService {
   // Check if can pop
   bool canPop() {
     return _navigator?.canPop() ?? false;
+  }
+
+  // ============================================
+  // CONVENIENCE METHODS FOR COMMON PATTERNS
+  // ============================================
+
+  /// Navigate to ride options from any screen with full location data
+  void navigateToRideOptionsWithLocations({
+    required LatLng pickupLatLng,
+    required LatLng destinationLatLng,
+    required String pickupAddress,
+    required String destinationAddress,
+    bool isScheduled = false,
+    String? city,
+  }) {
+    goToRideOptions(
+      from: pickupAddress,
+      to: destinationAddress,
+      isScheduled: isScheduled,
+      pickupLatLng: pickupLatLng,
+      destinationLatLng: destinationLatLng,
+      pickupAddress: pickupAddress,
+      destinationAddress: destinationAddress,
+      city: city,
+    );
+  }
+
+  /// Show error dialog
+  void showErrorDialog({
+    required String title,
+    required String message,
+    VoidCallback? onDismiss,
+  }) {
+    final context = _navigator?.context;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onDismiss?.call();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show success snackbar
+  void showSuccessSnackBar(String message) {
+    final context = _navigator?.context;
+    if (context == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Show error snackbar
+  void showErrorSnackBar(String message) {
+    final context = _navigator?.context;
+    if (context == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 }

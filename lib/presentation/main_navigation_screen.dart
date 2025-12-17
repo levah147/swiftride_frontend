@@ -10,8 +10,8 @@ import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/rides/rides_screen.dart';
 import '../../presentation/screens/account/account_screen.dart';
 
-import '../drivers/driver_earnings_screen.dart';
-import '../drivers/driver_rides_screen.dart';
+import '../../presentation/screens/drivers/driver_earnings_screen.dart';
+import '../../presentation/screens/drivers/driver_rides_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;

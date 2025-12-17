@@ -12,7 +12,9 @@ class ApiConfig {
   static bool get useProduction => !kDebugMode; // Auto-detect
 
   /// Local development server URL (your computer's IP)
-  static const String _localUrl = 'http://192.168.229.65:8000/api';
+   
+  static const String _localUrl = 'https://enhancive-unriven-jamir.ngrok-free.dev/api';
+  // static const String _localUrl = 'http://192.168.222.65:8000/api';
 
   /// Production server URL (Render deployment)
   static const String _productionUrl =

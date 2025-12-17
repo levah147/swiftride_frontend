@@ -1,5 +1,5 @@
 // ==================== driver_matching_screen.dart ====================
-// DRIVER MATCHING SCREEN - Refactored with WebSocket integration
+// DRIVER MATCHING SCREEN - WebSocket integration with Token Authentication
 // Real-time driver search and matching
 
 import 'package:flutter/material.dart';
@@ -11,12 +11,12 @@ import 'dart:async';
 
 class DriverMatchingScreen extends StatefulWidget {
   final String rideId;
-  final LatLng from; // ✅ FIXED: Added missing 'from' parameter
+  final LatLng from;
 
   const DriverMatchingScreen({
     super.key,
     required this.rideId,
-    required this.from, // ✅ FIXED: Added as required parameter
+    required this.from,
   });
 
   @override
@@ -27,8 +27,14 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   StreamSubscription? _driverMatchSubscription;
+  StreamSubscription<String>? _connectionSubscription; // ✅ ADDED
   int _searchingSeconds = 0;
   Timer? _timer;
+  bool _isSearching = true; // ✅ ADDED
+  
+  // ✅ ADDED: Services
+  final socketService = SocketService();
+  final _socketAuthProvider = SocketAuthProvider();
 
   @override
   void initState() {
@@ -39,30 +45,115 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
       duration: const Duration(seconds: 2),
     )..repeat();
 
-    // Listen to driver match stream
+    // ✅ Connect to WebSocket when screen loads
     _listenToDriverMatch();
 
     // Start timer
     _startTimer();
+
+    // ✅ ADDED: Set timeout (2 minutes)
+    Future.delayed(const Duration(minutes: 2), () {
+      if (_isSearching && mounted) {
+        _showError('No drivers available. Please try again.');
+        Navigator.pop(context);
+      }
+    });
   }
 
-  void _listenToDriverMatch() {
-    final socketService = SocketService();
+  // ✅ COMPLETELY UPDATED METHOD - Now connects to WebSocket with token
+  Future<void> _listenToDriverMatch() async {
+    try {
+      // ✅ STEP 1: Get authentication token
+      debugPrint('🔑 Fetching authentication token...');
+      final token = await _socketAuthProvider.getToken();
+      
+      if (token == null || token.isEmpty) {
+        debugPrint('❌ No auth token available for WebSocket');
+        _showError('Authentication failed. Please login again.');
+        return;
+      }
 
-    _driverMatchSubscription = socketService.driverMatchStream.listen(
-      (match) {
-        debugPrint('✅ Driver matched: ${match.driverName}');
+      debugPrint('✅ Token retrieved successfully');
 
-        // Navigate to tracking screen
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/ride-tracking',
-            arguments: {'ride_id': widget.rideId},
-          );
-        }
-      },
-    );
+      // ✅ STEP 2: Connect to WebSocket BEFORE listening
+      debugPrint('🔌 Connecting to WebSocket for ride: ${widget.rideId}');
+      await socketService.connectToRide(widget.rideId, token);
+      
+      debugPrint('✅ WebSocket connected, now listening for driver match...');
+      
+      // ✅ STEP 3: NOW listen to driver match stream
+      _driverMatchSubscription = socketService.driverMatchStream.listen(
+        (match) {
+          debugPrint('✅ Driver matched: ${match.driverName}');
+          
+          // Stop searching animation
+          if (mounted) {
+            setState(() {
+              _isSearching = false;
+            });
+          }
+          
+          // Navigate to tracking screen
+          if (mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/ride-tracking',
+              arguments: {
+                'ride_id': widget.rideId,
+                'driver_id': match.driverId,
+                'driver_name': match.driverName,
+                'driver_phone': match.driverPhone,
+                'driver_rating': match.driverRating,
+                'vehicle_type': match.vehicleType,
+                'vehicle_model': match.vehicleModel,
+                'vehicle_color': match.vehicleColor,
+                'license_plate': match.licensePlate,
+              },
+            );
+          }
+        },
+        onError: (error) {
+          debugPrint('❌ WebSocket error: $error');
+          if (mounted) {
+            _showError('Connection error. Please try again.');
+          }
+        },
+        onDone: () {
+          debugPrint('🔌 WebSocket connection closed');
+        },
+      );
+
+      // ✅ STEP 4: Also listen to connection status
+      _connectionSubscription = socketService.connectionStatusStream.listen(
+        (status) {
+          debugPrint('🔌 WebSocket status: $status');
+          if (status == 'disconnected' && mounted) {
+            _showError('Connection lost. Reconnecting...');
+          }
+        },
+      );
+      
+      debugPrint('✅ All WebSocket listeners setup complete');
+      
+    } catch (e) {
+      debugPrint('❌ Failed to connect to WebSocket: $e');
+      if (mounted) {
+        _showError('Failed to connect. Please try again.');
+      }
+    }
+  }
+
+  // ✅ NEW METHOD - Show error messages
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _startTimer() {
@@ -82,7 +173,7 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // ✅ Instead of default
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -92,7 +183,7 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
               Align(
                 alignment: Alignment.topLeft,
                 child: IconButton(
-                  icon: Icon(Icons.close, color: colorScheme.onSurface), // ✅
+                  icon: Icon(Icons.close, color: colorScheme.onSurface),
                   onPressed: _showCancelDialog,
                 ),
               ),
@@ -107,13 +198,12 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border:
-                        Border.all(color: colorScheme.primary, width: 3), // ✅
+                    border: Border.all(color: colorScheme.primary, width: 3),
                   ),
                   child: Icon(
                     Icons.search,
                     size: 60,
-                    color: colorScheme.primary, // ✅
+                    color: colorScheme.primary,
                   ),
                 ),
               ),
@@ -126,7 +216,7 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface, // ✅
+                  color: colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -137,7 +227,7 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
                 'Searching... ${_formatDuration(_searchingSeconds)}',
                 style: TextStyle(
                   fontSize: 16,
-                  color: colorScheme.onSurfaceVariant, // ✅
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
 
@@ -147,7 +237,7 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: colorScheme.surface, // ✅
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -254,7 +344,12 @@ class _DriverMatchingScreenState extends State<DriverMatchingScreen>
   void dispose() {
     _animationController.dispose();
     _driverMatchSubscription?.cancel();
+    _connectionSubscription?.cancel(); // ✅ ADDED
     _timer?.cancel();
+    
+    // ✅ ADDED: Disconnect from WebSocket when leaving screen
+    socketService.disconnect();
+    
     super.dispose();
   }
 }

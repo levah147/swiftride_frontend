@@ -1,7 +1,7 @@
 // ==================== driver_service.dart ====================
-import 'package:flutter/foundation.dart';
-import '../models/user.dart';
 import 'api_client.dart';
+import '../models/driver_available_ride.dart';
+import '../models/driver_active_ride.dart';
 
 class DriverService {
   final ApiClient _apiClient = ApiClient.instance;
@@ -42,6 +42,119 @@ class DriverService {
   Future<ApiResponse<Map<String, dynamic>>> getDriverProfile() async {
     return await _apiClient.get<Map<String, dynamic>>(
       '/drivers/profile/',
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Toggle driver availability (online/offline)
+  /// action: 'online' | 'offline'
+  Future<ApiResponse<Map<String, dynamic>>> toggleAvailability(
+      String action) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/drivers/toggle-availability/',
+      {'action': action},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Fetch available ride requests for drivers
+  Future<ApiResponse<List<DriverAvailableRide>>> getAvailableRides({
+    required double latitude,
+    required double longitude,
+    double maxDistanceKm = 10,
+  }) async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/rides/available/',
+      queryParams: {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'max_distance': maxDistanceKm.toString(),
+      },
+      fromJson: (json) => json as List<dynamic>,
+    );
+
+    if (response.isSuccess && response.data != null) {
+      final list = response.data!
+          .map((e) => DriverAvailableRide.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return ApiResponse.success(list);
+    }
+    return ApiResponse.error(response.error, statusCode: response.statusCode);
+  }
+
+  /// Accept a ride request
+  Future<ApiResponse<Map<String, dynamic>>> acceptRide(String requestId) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/rides/requests/$requestId/accept/',
+      {},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Decline a ride request
+  Future<ApiResponse<Map<String, dynamic>>> declineRide(
+    String requestId, {
+    String? reason,
+  }) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/rides/requests/$requestId/decline/',
+      {
+        if (reason != null) 'reason': reason,
+      },
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Get active rides for driver
+  Future<ApiResponse<List<DriverActiveRide>>> getActiveRides() async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/rides/active/',
+      fromJson: (json) => json as List<dynamic>,
+    );
+
+    if (response.isSuccess && response.data != null) {
+      final list = response.data!
+          .map((e) => DriverActiveRide.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return ApiResponse.success(list);
+    }
+    return ApiResponse.error(response.error, statusCode: response.statusCode);
+  }
+
+  /// Start ride
+  Future<ApiResponse<Map<String, dynamic>>> startRide(String rideId) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/rides/$rideId/start/',
+      {},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Complete ride
+  Future<ApiResponse<Map<String, dynamic>>> completeRide(String rideId) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/rides/$rideId/complete/',
+      {},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  /// Push driver location for active ride
+  Future<ApiResponse<Map<String, dynamic>>> updateDriverLocation({
+    required String rideId,
+    required double latitude,
+    required double longitude,
+    double? speed,
+    double? bearing,
+  }) async {
+    return await _apiClient.post<Map<String, dynamic>>(
+      '/rides/$rideId/update-location/',
+      {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (speed != null) 'speed_kmh': speed,
+        if (bearing != null) 'bearing': bearing,
+      },
       fromJson: (json) => json as Map<String, dynamic>,
     );
   }

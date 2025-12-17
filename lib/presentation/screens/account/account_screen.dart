@@ -19,8 +19,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:swiftride/screens/drivers/become_driver_screen.dart';
-import 'package:swiftride/screens/drivers/driver_verification_screen.dart';
+import 'package:swiftride/presentation/screens/drivers/verification/become_driver_screen.dart';
+import 'package:swiftride/presentation/screens/drivers/verification/driver_verification_screen.dart'; 
 import '../../../constants/colors.dart';
 import '../../../constants/app_strings.dart';
 import '../../../services/auth_service.dart';
@@ -34,7 +34,7 @@ import 'widgets/shared/profile_header_widget.dart';
 import 'widgets/shared/account_actions_widget.dart';
 import 'widgets/shared/shared_menu_section_widget.dart'; // ✅ NEW: Shared menu
 import 'widgets/rider/become_driver_cta_widget.dart';
-import 'widgets/driver/driver_stats_card_widget.dart';
+
 import 'widgets/driver/driver_vehicle_info_widget.dart';
 import 'widgets/driver/driver_license_info_widget.dart';
 import 'widgets/driver/driver_status_badge_widget.dart';
@@ -541,11 +541,7 @@ class _AccountScreenState extends State<AccountScreen> {
     debugPrint('🚗 Building APPROVED DRIVER content');
     
     return [
-      // Driver stats card
-      DriverStatsCardWidget(
-        driverData: _driverData,
-        isDarkMode: isDarkMode,
-      ),
+
 
       const SizedBox(height: 24),
 

@@ -1,15 +1,26 @@
+// ==================== screens/ride_options_screen.dart ====================
+// RIDE OPTIONS SCREEN - Production Ready
+// No hardcoded data, real location integration
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:swiftride/routes/app_routes.dart';
 import 'package:swiftride/routes/route_arguments.dart';
 import '../../../../../constants/app_dimensions.dart';
 import '../../../../../models/vehicle_type.dart';
+import '../../../presentation/screens/ride_booking/controllers/ride_booking_controller.dart';
+import '../../../../../services/auth_service.dart';
 import 'driver_matching_screen.dart';
 
 class RideOptionsScreen extends StatefulWidget {
   final String from;
   final String to;
   final bool isScheduled;
+  final LatLng pickupLatLng;
+  final LatLng destinationLatLng;
+  final String pickupAddress;
+  final String destinationAddress;
   final String? city;
 
   const RideOptionsScreen({
@@ -17,6 +28,10 @@ class RideOptionsScreen extends StatefulWidget {
     required this.from,
     required this.to,
     required this.isScheduled,
+    required this.pickupLatLng,
+    required this.destinationLatLng,
+    required this.pickupAddress,
+    required this.destinationAddress,
     this.city,
   });
 
@@ -27,14 +42,18 @@ class RideOptionsScreen extends StatefulWidget {
 class _RideOptionsScreenState extends State<RideOptionsScreen> {
   int _selectedIndex = 0;
   late List<VehicleType> _availableVehicles;
-  double _estimatedDistance = 5.2;
+  double? _estimatedDistance;
   bool _isLoadingFare = false;
+  bool _isBooking = false;
+
+  late AuthService _authService;
 
   @override
   void initState() {
     super.initState();
+    _authService = AuthService();
     _loadAvailableVehicles();
-    _calculateFares();
+    _calculateDistance();
   }
 
   void _loadAvailableVehicles() {
@@ -44,15 +63,56 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     });
   }
 
-  Future<void> _calculateFares() async {
+  /// Calculate distance between pickup and destination
+  void _calculateDistance() {
     setState(() => _isLoadingFare = true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() => _isLoadingFare = false);
+
+    // Calculate straight-line distance using Haversine formula
+    // In production, you should use Google Directions API for accurate road distance
+    final distance = _calculateHaversineDistance(
+      widget.pickupLatLng.latitude,
+      widget.pickupLatLng.longitude,
+      widget.destinationLatLng.latitude,
+      widget.destinationLatLng.longitude,
+    );
+
+    setState(() {
+      _estimatedDistance = distance;
+      _isLoadingFare = false;
+    });
+
+    debugPrint('📏 Calculated distance: ${distance.toStringAsFixed(2)} km');
+  }
+
+  /// Haversine formula to calculate distance between two coordinates
+  double _calculateHaversineDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
+    
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    
+    final a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
+        (math.cos(_toRadians(lat1)) *
+            math.cos(_toRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2));
+    
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
+  }
+
+  double _toRadians(double degree) {
+    return degree * math.pi / 180;
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 Get theme colors
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -78,12 +138,12 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
         children: [
           _buildRouteSummary(colorScheme),
           const SizedBox(height: 16),
-          _buildTripInfo(colorScheme),
+          if (_estimatedDistance != null) _buildTripInfo(colorScheme),
           const SizedBox(height: 24),
           Expanded(
             child: _buildVehicleList(colorScheme),
           ),
-          _buildBookButton(colorScheme),
+          if (_estimatedDistance != null) _buildBookButton(colorScheme),
         ],
       ),
     );
@@ -189,19 +249,21 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   }
 
   Widget _buildTripInfo(ColorScheme colorScheme) {
+    final estimatedTime = (_estimatedDistance! * 3).toInt(); // Rough estimate: 3 min per km
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
       child: Row(
         children: [
           _buildInfoChip(
             icon: Icons.straighten,
-            label: '${_estimatedDistance.toStringAsFixed(1)} km',
+            label: '${_estimatedDistance!.toStringAsFixed(1)} km',
             colorScheme: colorScheme,
           ),
           const SizedBox(width: 12),
           _buildInfoChip(
             icon: Icons.access_time,
-            label: '${(_estimatedDistance * 3).toInt()} min',
+            label: '$estimatedTime min',
             colorScheme: colorScheme,
           ),
         ],
@@ -240,10 +302,23 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   }
 
   Widget _buildVehicleList(ColorScheme colorScheme) {
-    if (_isLoadingFare) {
+    if (_isLoadingFare || _estimatedDistance == null) {
       return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Calculating fares...',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -254,7 +329,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
       itemBuilder: (context, index) {
         final vehicle = _availableVehicles[index];
         final isSelected = _selectedIndex == index;
-        final fare = vehicle.calculateFare(_estimatedDistance);
+        final fare = vehicle.calculateFare(_estimatedDistance!);
         
         return GestureDetector(
           onTap: () => setState(() => _selectedIndex = index),
@@ -368,7 +443,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
 
   Widget _buildBookButton(ColorScheme colorScheme) {
     final selectedVehicle = _availableVehicles[_selectedIndex];
-    final fare = selectedVehicle.calculateFare(_estimatedDistance);
+    final fare = selectedVehicle.calculateFare(_estimatedDistance!);
     
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
@@ -426,25 +501,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
               width: double.infinity,
               height: AppDimensions.buttonHeightLarge,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.driverMatching,
-                    arguments: DriverMatchingArguments(
-                      rideId: 'ride-${DateTime.now().millisecondsSinceEpoch}',
-                      from: LatLng(0, 0),
-                      to: widget.to,
-                      rideType: {
-                        'id': selectedVehicle.id,
-                        'name': selectedVehicle.name,
-                        'price': selectedVehicle.formatPrice(fare),
-                        'icon': selectedVehicle.icon,
-                        'color': selectedVehicle.color,
-                      },
-                      isScheduled: widget.isScheduled,
-                    ),
-                  );
-                },
+                onPressed: _isBooking ? null : () => _handleBookRide(selectedVehicle, fare),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: selectedVehicle.color,
                   foregroundColor: Colors.white,
@@ -452,29 +509,39 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
                   ),
+                  disabledBackgroundColor: selectedVehicle.color.withOpacity(0.5),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      widget.isScheduled 
-                          ? 'Schedule ${selectedVehicle.name}' 
-                          : 'Book ${selectedVehicle.name}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                child: _isBooking
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.isScheduled 
+                                ? 'Schedule ${selectedVehicle.name}' 
+                                : 'Book ${selectedVehicle.name}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '• ${selectedVehicle.formatPrice(fare)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '• ${selectedVehicle.formatPrice(fare)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
@@ -482,4 +549,102 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
       ),
     );
   }
+
+  /// Handle ride booking with real location data
+  Future<void> _handleBookRide(VehicleType selectedVehicle, double fare) async { 
+    setState(() => _isBooking = true);
+
+    try {
+      final controller = context.read<RideBookingController>();
+
+      // Get authenticated user
+      final userResponse = await _authService.getCurrentUser();
+      if (!userResponse.isSuccess || userResponse.data == null) {
+        throw Exception('Please login to book a ride');
+      }
+      final user = userResponse.data!;
+
+      // Set pickup location in controller with real coordinates
+      await controller.setPickupLocation(
+        widget.pickupLatLng,
+        widget.pickupAddress,
+      );
+
+      // Set destination in controller with real coordinates
+      await controller.setDestinationLocation( 
+        widget.destinationLatLng,
+        widget.destinationAddress,
+      );
+
+      // Set selected vehicle
+      await controller.selectVehicle(selectedVehicle);
+      
+      debugPrint('📱 Booking ride:');
+      debugPrint('   User: ${user.id}');
+      debugPrint('   From: ${widget.pickupAddress} (${widget.pickupLatLng.latitude}, ${widget.pickupLatLng.longitude})');
+      debugPrint('   To: ${widget.destinationAddress} (${widget.destinationLatLng.latitude}, ${widget.destinationLatLng.longitude})');
+      debugPrint('   Vehicle: ${selectedVehicle.name}');
+      debugPrint('   Distance: ${_estimatedDistance!.toStringAsFixed(2)} km');
+      debugPrint('   Fare: ${selectedVehicle.formatPrice(fare)}');
+
+      // Book the ride
+      final success = await controller.bookRide(user.id);
+
+      if (!success) {
+        throw Exception(controller.error ?? 'Failed to book ride');
+      }
+
+      // Verify ride was created
+      if (controller.activeRide == null) {
+        throw Exception('Ride created but no ride ID returned');
+      }
+
+      debugPrint('✅ Ride booked successfully: ${controller.activeRide!.id}');
+
+      // Navigate to driver matching screen
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.driverMatching,
+          arguments: DriverMatchingArguments(
+            rideId: controller.activeRide!.id,
+            from: widget.pickupLatLng,
+            to: widget.destinationAddress,
+            rideType: {
+              'id': selectedVehicle.id,
+              'name': selectedVehicle.name,
+              'price': selectedVehicle.formatPrice(fare),
+              'icon': selectedVehicle.icon.codePoint,
+              'color': selectedVehicle.color.value,
+            },
+            isScheduled: widget.isScheduled,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Booking error: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBooking = false);
+      }
+    }
+  }
 }
+
+// Add this import at the top if not already present

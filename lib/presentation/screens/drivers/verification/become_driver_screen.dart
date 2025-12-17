@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../constants/colors.dart';
-import '../../constants/app_strings.dart';
-import '../../constants/app_dimensions.dart';
-import '../../services/driver_service.dart';
+import '../../../../constants/colors.dart';
+import '../../../../constants/app_strings.dart';
+import '../../../../constants/app_dimensions.dart';
+import '../../../../services/driver_service.dart';
 import 'driver_verification_screen.dart';
 
 class BecomeDriverScreen extends StatefulWidget {
@@ -28,11 +28,10 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
   bool _isSubmitting = false;
 
   final List<Map<String, String>> vehicleTypes = [
-    {'value': 'sedan', 'label': 'Sedan'},
-    {'value': 'suv', 'label': 'SUV'},
-    {'value': 'hatchback', 'label': 'Hatchback'},
-    {'value': 'van', 'label': 'Van'},
-    {'value': 'truck', 'label': 'Truck'},
+    {'value': 'bike', 'label': 'Bike (Okada)'},
+    {'value': 'keke', 'label': 'Keke (Tricycle)'},
+    {'value': 'car', 'label': 'Car (Standard)'},
+    {'value': 'suv', 'label': 'SUV (Premium)'},
   ];
 
   @override
@@ -85,7 +84,9 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final expiryDateStr = DateFormat('yyyy-MM-dd').format(_selectedLicenseExpiry!);
+      final expiryDateStr = DateFormat(
+        'yyyy-MM-dd',
+      ).format(_selectedLicenseExpiry!);
 
       final response = await _driverService.applyToBeDriver(
         vehicleType: _selectedVehicleType!,
@@ -93,9 +94,10 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
         licensePlate: _licensePlateController.text.trim().toUpperCase(),
         driverLicenseNumber: _driverLicenseController.text.trim(),
         driverLicenseExpiry: expiryDateStr,
-        vehicleYear: _vehicleYearController.text.isNotEmpty
-            ? int.parse(_vehicleYearController.text)
-            : null,
+        vehicleYear:
+            _vehicleYearController.text.isNotEmpty
+                ? int.parse(_vehicleYearController.text)
+                : null,
       );
 
       if (!mounted) return;
@@ -103,7 +105,7 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
 
       if (response.isSuccess) {
         _showSuccessSnackBar('Application submitted successfully!');
-        
+
         // Navigate to verification screen
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
@@ -194,10 +196,7 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Provide accurate information about your vehicle',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     ),
                   ],
                 ),
@@ -217,12 +216,13 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _selectedVehicleType,
-                items: vehicleTypes.map((type) {
-                  return DropdownMenuItem<String>(
-                    value: type['value'],
-                    child: Text(type['label']!),
-                  );
-                }).toList(),
+                items:
+                    vehicleTypes.map((type) {
+                      return DropdownMenuItem<String>(
+                        value: type['value'],
+                        child: Text(type['label']!),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() => _selectedVehicleType = value);
                 },
@@ -234,7 +234,10 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 style: const TextStyle(color: Colors.white),
                 dropdownColor: Colors.grey[900],
@@ -383,12 +386,18 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
               GestureDetector(
                 onTap: _selectExpiryDate,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey[900],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _selectedLicenseExpiry == null ? Colors.grey[700]! : AppColors.primary,
+                      color:
+                          _selectedLicenseExpiry == null
+                              ? Colors.grey[700]!
+                              : AppColors.primary,
                       width: 1,
                     ),
                   ),
@@ -398,13 +407,22 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
                       Text(
                         _selectedLicenseExpiry == null
                             ? 'Select expiry date'
-                            : DateFormat('MMM dd, yyyy').format(_selectedLicenseExpiry!),
+                            : DateFormat(
+                              'MMM dd, yyyy',
+                            ).format(_selectedLicenseExpiry!),
                         style: TextStyle(
-                          color: _selectedLicenseExpiry == null ? Colors.grey[500] : Colors.white,
+                          color:
+                              _selectedLicenseExpiry == null
+                                  ? Colors.grey[500]
+                                  : Colors.white,
                           fontSize: 14,
                         ),
                       ),
-                      const Icon(Icons.calendar_today, color: AppColors.primary, size: 20),
+                      const Icon(
+                        Icons.calendar_today,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ],
                   ),
                 ),
@@ -425,23 +443,26 @@ class _BecomeDriverScreenState extends State<BecomeDriverScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  child:
+                      _isSubmitting
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                          : const Text(
+                            'Continue to Verification',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        )
-                      : const Text(
-                          'Continue to Verification',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
               ),
 

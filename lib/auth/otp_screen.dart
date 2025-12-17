@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:swiftride/screens/main/main_navigation_screen.dart';
+import 'package:swiftride/presentation/main_navigation_screen.dart';
 import '../../services/auth_service.dart';
 
 class OTPScreen extends StatefulWidget {

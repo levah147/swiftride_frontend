@@ -40,8 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildTopBar(context),
 
               // Search bottom sheet
-              SearchBottomSheet(
-                onDestinationTap: _navigateToDestinationSelection,
+              Consumer<HomeController>(
+                builder: (context, controller, child) {
+                  return SearchBottomSheet(
+                    onDestinationTap: () => _navigateToDestinationSelection(context, controller),
+                  );
+                },
               ),
             ],
           ),
@@ -131,13 +135,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _navigateToDestinationSelection() {
-    final controller = context.read<HomeController>();
+  void _navigateToDestinationSelection(BuildContext context, HomeController controller) {
+    // Get actual current location data
+    final pickupAddress = controller.currentPosition != null 
+        ? 'Current Location' 
+        : 'Set pickup location';
+    
+    final pickupLatLng = controller.currentLatLng;
     
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const DestinationSelectionScreen(),
+        builder: (context) => DestinationSelectionScreen(
+          pickupAddress: pickupAddress,
+          pickupLatLng: pickupLatLng,
+        ),
       ),
     );
   }

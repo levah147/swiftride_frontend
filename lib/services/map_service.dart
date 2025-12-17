@@ -5,6 +5,7 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../models/route_info.dart';
 
@@ -14,7 +15,8 @@ class MapService {
   MapService._internal();
 
   // TODO: Replace with your Google Maps API key
-  static const String _googleMapsApiKey = 'AIzaSyAPpZYwp6IjJhNDshFTxTsTaa05NxiTE3U';
+  static const String _googleMapsApiKey =
+      'AIzaSyAPpZYwp6IjJhNDshFTxTsTaa05NxiTE3U';
 
   // ============================================
   // ROUTE CALCULATIONS
@@ -28,13 +30,14 @@ class MapService {
     bool alternatives = false,
   }) async {
     try {
-      final url = _buildDirectionsUrl(origin, destination, waypoints, alternatives);
-      
+      final url =
+          _buildDirectionsUrl(origin, destination, waypoints, alternatives);
+
       final response = await http.get(Uri.parse(url));
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         if (data['status'] == 'OK') {
           return RouteInfo.fromGoogleMapsResponse(data);
         } else {
@@ -49,23 +52,23 @@ class MapService {
     }
   }
 
-  String _buildDirectionsUrl(LatLng origin, LatLng destination, List<LatLng>? waypoints, bool alternatives) {
+  String _buildDirectionsUrl(LatLng origin, LatLng destination,
+      List<LatLng>? waypoints, bool alternatives) {
     final originStr = '${origin.latitude},${origin.longitude}';
     final destStr = '${destination.latitude},${destination.longitude}';
-    
+
     var url = 'https://maps.googleapis.com/maps/api/directions/json'
         '?origin=$originStr'
         '&destination=$destStr'
         '&key=$_googleMapsApiKey'
         '&alternatives=$alternatives';
-    
+
     if (waypoints != null && waypoints.isNotEmpty) {
-      final waypointsStr = waypoints
-          .map((w) => '${w.latitude},${w.longitude}')
-          .join('|');
+      final waypointsStr =
+          waypoints.map((w) => '${w.latitude},${w.longitude}').join('|');
       url += '&waypoints=$waypointsStr';
     }
-    
+
     return url;
   }
 
@@ -75,14 +78,14 @@ class MapService {
 
   /// Calculate distance between two points in kilometers
   double calculateDistance(LatLng from, LatLng to) {
-    const p = 0.017453292519943295;
-    final a = 0.5 - 
-        cos((to.latitude - from.latitude) * p) / 2 +
-        cos(from.latitude * p) *
-        cos(to.latitude * p) *
-        (1 - cos((to.longitude - from.longitude) * p)) /
-        2;
-    return 12742 * asin(sqrt(a));
+    const p = 0.017453292519943295; // pi/180
+    final a = 0.5 -
+        math.cos((to.latitude - from.latitude) * p) / 2 +
+        math.cos(from.latitude * p) *
+            math.cos(to.latitude * p) *
+            (1 - math.cos((to.longitude - from.longitude) * p)) /
+            2;
+    return 12742 * math.asin(math.sqrt(a));
   }
 
   // ============================================
@@ -138,7 +141,8 @@ class MapService {
       points: route.polylinePoints,
       color: route.polylineColor,
       width: 5,
-      patterns: route.hasTraffic ? [PatternItem.dash(10), PatternItem.gap(5)] : [],
+      patterns:
+          route.hasTraffic ? [PatternItem.dash(10), PatternItem.gap(5)] : [],
     );
   }
 
@@ -147,12 +151,13 @@ class MapService {
   // ============================================
 
   /// Get camera position to fit bounds
-  CameraPosition getCameraPositionForBounds(LatLngBounds bounds, {double zoom = 15}) {
+  CameraPosition getCameraPositionForBounds(LatLngBounds bounds,
+      {double zoom = 15}) {
     final center = LatLng(
       (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
       (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
     );
-    
+
     return CameraPosition(
       target: center,
       zoom: zoom,
@@ -170,14 +175,4 @@ class MapService {
       CameraUpdate.newLatLngBounds(route.bounds, 50),
     );
   }
-}
-
-double cos(num x) => x.cos();
-double asin(num x) => x.asin();
-double sqrt(num x) => x.sqrt();
-
-extension on num {
-  double cos() => 0.0; // Stub - use dart:math in real implementation
-  double asin() => 0.0;
-  double sqrt() => 0.0;
 }

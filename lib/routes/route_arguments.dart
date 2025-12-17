@@ -1,4 +1,4 @@
-// Arguments models for passing data through routes
+// ==================== 1. route_arguments.dart - UPDATED ====================
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -6,23 +6,33 @@ class RideOptionsArguments {
   final String from;
   final String to;
   final bool isScheduled;
+  final LatLng pickupLatLng;           // ✅ ADDED
+  final LatLng destinationLatLng;      // ✅ ADDED
+  final String pickupAddress;          // ✅ ADDED
+  final String destinationAddress;     // ✅ ADDED
+  final String? city;
 
   RideOptionsArguments({
     required this.from,
     required this.to,
     required this.isScheduled,
+    required this.pickupLatLng,        // ✅ ADDED
+    required this.destinationLatLng,   // ✅ ADDED
+    required this.pickupAddress,       // ✅ ADDED
+    required this.destinationAddress,  // ✅ ADDED
+    this.city,
   });
 }
 
 class DriverMatchingArguments {
-  final String rideId;  // ✅ ADDED: Required for DriverMatchingScreen
-  final LatLng from;    // ✅ CHANGED: String → LatLng (coordinates)
-  final String to;      // Keep as String (address)
+  final String rideId;
+  final LatLng from;
+  final String to;
   final Map<String, dynamic> rideType;
   final bool isScheduled;
 
   DriverMatchingArguments({
-    required this.rideId,  // ✅ NEW
+    required this.rideId,
     required this.from,
     required this.to,
     required this.rideType,
@@ -31,14 +41,14 @@ class DriverMatchingArguments {
 }
 
 class RideTrackingArguments {
-  final String rideId;  // ✅ ADDED: Required for RideTrackingScreen
+  final String rideId;
   final String from;
   final String to;
   final Map<String, dynamic> rideType;
   final Map<String, dynamic> driver;
 
   RideTrackingArguments({
-    required this.rideId,  // ✅ NEW
+    required this.rideId,
     required this.from,
     required this.to,
     required this.rideType,
@@ -47,7 +57,7 @@ class RideTrackingArguments {
 }
 
 class RideCompletionArguments {
-  final String rideId;  // ✅ OPTIONAL: Could be useful for completion tracking
+  final String rideId;
   final String from;
   final String to;
   final Map<String, dynamic> rideType;
@@ -56,7 +66,7 @@ class RideCompletionArguments {
   final String distance;
 
   RideCompletionArguments({
-    this.rideId = '',  // ✅ Optional with default
+    this.rideId = '',
     required this.from,
     required this.to,
     required this.rideType,
