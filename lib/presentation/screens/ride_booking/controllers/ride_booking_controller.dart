@@ -35,7 +35,8 @@ class RideBookingController extends ChangeNotifier {
   final SocketService _socketService = SocketService();
   final SocketAuthProvider _socketAuthProvider = SocketAuthProvider();
   final LocationService _locationService = LocationService();
-  final GeocodingService _geocodingService = GeocodingService(); // ✅ ADD: For reverse geocoding
+  final GeocodingService _geocodingService =
+      GeocodingService(); // ✅ ADD: For reverse geocoding
 
   // Booking stage
   BookingStage _currentStage = BookingStage.selectingDestination;
@@ -118,10 +119,10 @@ class RideBookingController extends ChangeNotifier {
     _pickupLocation = location;
     _pickupAddress = address;
     debugPrint('📍 Pickup set: $address');
-    
+
     // Detect city from pickup location
     await _detectCity(location);
-    
+
     notifyListeners();
   }
 
@@ -135,14 +136,24 @@ class RideBookingController extends ChangeNotifier {
     // Automatically calculate route
     if (_pickupLocation != null) {
       await calculateRoute();
-      
+
       // Load vehicles after route is calculated
-      if (_cityName != null) {
-        await loadAvailableVehicles(_cityName!);
+      if (_routeInfo != null) {
+        // tyr to detect city form destination if not already detected
+        if (_cityName != null) {
+          debugPrint(' 🔍 Attempting to detect city from destination...');
+          await _detectCity(location);
+        }
+
+          // load vehicles with detected city (or null)
+          await loadAvailableVehicles(_cityName!);
       } else {
-        // Fallback: Load default vehicles
-        debugPrint('⚠️ No city detected, loading default vehicles');
-        await loadAvailableVehicles('Makurdi'); // Default city
+        // Fallback: Try to detect city from backend or use first available city
+        debugPrint('⚠️ No city detected, attempting to detect from backend...');
+        // TODO: Call backend /pricing/detect-city/ endpoint with coordinates
+        // For now, try to extract from address or use empty (backend will handle)
+        await loadAvailableVehicles(
+            _cityName ?? ''); // Let backend handle default
       }
     }
   }
@@ -151,10 +162,10 @@ class RideBookingController extends ChangeNotifier {
   Future<void> _detectCity(LatLng location) async {
     try {
       debugPrint('🔍 Detecting city from coordinates...');
-      
+
       // Use GeocodingService to reverse geocode
       final address = await _geocodingService.reverseGeocode(location);
-      
+
       if (address != null && address.city != null) {
         _cityName = address.city;
         debugPrint('🏙️ City detected: $_cityName');
@@ -162,36 +173,50 @@ class RideBookingController extends ChangeNotifier {
         debugPrint('⚠️ Could not detect city from coordinates');
         // Fallback: Extract from address string or use default
         _cityName = _extractCityFromAddress(_pickupAddress);
-        
+
         if (_cityName == null) {
-          debugPrint('⚠️ Using default city: Makurdi');
-          _cityName = 'Makurdi'; // Default fallback
+          debugPrint('⚠️ Could not detect city, will use backend default');
+          // Don't set a hard-coded city - let backend handle it
+          _cityName = null;
         }
       }
     } catch (e) {
       debugPrint('❌ City detection error: $e');
       // Fallback to extracting from address
-      _cityName = _extractCityFromAddress(_pickupAddress) ?? 'Makurdi';
+      _cityName = _extractCityFromAddress(_pickupAddress);
+      // Don't set hard-coded fallback - let backend handle city detection
     }
   }
 
   /// ✅ ADD: Extract city name from address string
   String? _extractCityFromAddress(String? address) {
     if (address == null) return null;
-    
+
     // Common Nigerian cities
     const cities = [
-      'Lagos', 'Abuja', 'Kano', 'Ibadan', 'Port Harcourt',
-      'Benin', 'Kaduna', 'Jos', 'Enugu', 'Makurdi',
-      'Warri', 'Calabar', 'Maiduguri', 'Aba', 'Onitsha',
+      'Lagos',
+      'Abuja',
+      'Kano',
+      'Ibadan',
+      'Port Harcourt',
+      'Benin',
+      'Kaduna',
+      'Jos',
+      'Enugu',
+      'Makurdi',
+      'Warri',
+      'Calabar',
+      'Maiduguri',
+      'Aba',
+      'Onitsha',
     ];
-    
+
     for (final city in cities) {
       if (address.toLowerCase().contains(city.toLowerCase())) {
         return city;
       }
     }
-    
+
     return null;
   }
 
@@ -269,9 +294,12 @@ class RideBookingController extends ChangeNotifier {
   /// Load available vehicles
   Future<void> loadAvailableVehicles(String cityName) async {
     try {
-      debugPrint('🚗 Loading vehicles for city: $cityName');
-      
-      final response = await _pricingService.getVehicleTypes(cityName: cityName);
+      debugPrint('🚗 Loading vehicles for city: ${cityName ?? "default"}');
+
+        // Only pass cityName if it's valid
+      final response = await _pricingService.getVehicleTypes(
+        cityName: (cityName != null && cityName.isNotEmpty) ? cityName : null,
+      );
 
       if (response.isSuccess && response.data != null) {
         _availableVehicles = response.data!.where((v) => v.available).toList();
@@ -302,7 +330,7 @@ class RideBookingController extends ChangeNotifier {
     // Calculate fare
     await calculateFare();
   }
-  
+
   /// Set vehicle type by ID (for when vehicle is selected from UI)
   void setVehicleType(String vehicleTypeId) {
     final vehicle = _availableVehicles.firstWhere(
@@ -320,7 +348,9 @@ class RideBookingController extends ChangeNotifier {
 
   /// Calculate fare for selected vehicle
   Future<void> calculateFare() async {
-    if (_selectedVehicle == null || _pickupLocation == null || _destinationLocation == null) {
+    if (_selectedVehicle == null ||
+        _pickupLocation == null ||
+        _destinationLocation == null) {
       debugPrint('⚠️ Cannot calculate fare: missing required data');
       return;
     }
@@ -345,7 +375,7 @@ class RideBookingController extends ChangeNotifier {
         final fareCalc = response.data!;
         _estimatedFare = fareCalc.totalFare;
         _fareHash = fareCalc.fareHash;
-        
+
         // Check if there's a surge multiplier
         if (fareCalc.surgeMultiplier > 1.0) {
           debugPrint('⚡ Surge pricing active: ${fareCalc.surgeMultiplier}x');
@@ -353,7 +383,8 @@ class RideBookingController extends ChangeNotifier {
 
         debugPrint('✅ Fare calculated: ${fareCalc.formattedTotal}');
         debugPrint('   - Base fare: ₦${fareCalc.baseFare.toStringAsFixed(0)}');
-        debugPrint('   - Distance fare: ₦${fareCalc.distanceFare.toStringAsFixed(0)}');
+        debugPrint(
+            '   - Distance fare: ₦${fareCalc.distanceFare.toStringAsFixed(0)}');
         debugPrint('   - Time fare: ₦${fareCalc.timeFare.toStringAsFixed(0)}');
         debugPrint('   - Fare hash: $_fareHash');
       } else {
@@ -374,10 +405,10 @@ class RideBookingController extends ChangeNotifier {
   /// Apply promo code
   Future<void> applyPromoCode(String code) async {
     if (code.isEmpty) return;
-    
+
     _promoCode = code;
     debugPrint('🎟️ Applying promo code: $code');
-    
+
     // Recalculate fare with promo code
     await calculateFare();
   }
@@ -396,18 +427,21 @@ class RideBookingController extends ChangeNotifier {
   /// Book the ride
   Future<bool> bookRide(String userId) async {
     // Validate ALL required fields
-    if (_pickupLocation == null || 
-        _destinationLocation == null || 
-        _pickupAddress == null || 
+    if (_pickupLocation == null ||
+        _destinationLocation == null ||
+        _pickupAddress == null ||
         _destinationAddress == null ||
         _selectedVehicle == null ||
         _fareHash == null) {
       _errorMessage = 'Missing required booking information';
       debugPrint('❌ Cannot book: $_errorMessage');
-      debugPrint('   - Pickup location: ${_pickupLocation != null ? "✓" : "✗"}');
+      debugPrint(
+          '   - Pickup location: ${_pickupLocation != null ? "✓" : "✗"}');
       debugPrint('   - Pickup address: ${_pickupAddress != null ? "✓" : "✗"}');
-      debugPrint('   - Destination location: ${_destinationLocation != null ? "✓" : "✗"}');
-      debugPrint('   - Destination address: ${_destinationAddress != null ? "✓" : "✗"}');
+      debugPrint(
+          '   - Destination location: ${_destinationLocation != null ? "✓" : "✗"}');
+      debugPrint(
+          '   - Destination address: ${_destinationAddress != null ? "✓" : "✗"}');
       debugPrint('   - Vehicle: ${_selectedVehicle != null ? "✓" : "✗"}');
       debugPrint('   - Fare hash: ${_fareHash != null ? "✓" : "✗"}');
       notifyListeners();
@@ -478,7 +512,7 @@ class RideBookingController extends ChangeNotifier {
   Future<void> _connectToRideSocket(String rideId) async {
     try {
       debugPrint('🔌 Connecting to ride WebSocket...');
-      
+
       // Fetch stored JWT for socket authentication
       final authToken = await _socketAuthProvider.getToken();
       if (authToken == null) {
@@ -562,8 +596,9 @@ class RideBookingController extends ChangeNotifier {
     debugPrint('   - Rating: ${match.driverRating}');
     debugPrint('   - Vehicle: ${match.vehicleModel} (${match.vehicleColor})');
     debugPrint('   - License: ${match.licensePlate}');
-    debugPrint('   - ETA: ${match.eta} minutes'); // ✅ FIXED: Changed from etaMinutes to eta
-    
+    debugPrint(
+        '   - ETA: ${match.eta} minutes'); // ✅ FIXED: Changed from etaMinutes to eta
+
     _currentStage = BookingStage.driverMatched;
     notifyListeners();
   }
@@ -582,7 +617,7 @@ class RideBookingController extends ChangeNotifier {
     try {
       debugPrint('🚫 Cancelling ride: ${_activeRide!.id}');
       debugPrint('   - Reason: $reason');
-      
+
       final response = await _rideService.cancelRide(
         _activeRide!.id,
         reason: reason,
@@ -590,10 +625,10 @@ class RideBookingController extends ChangeNotifier {
 
       if (response.isSuccess) {
         debugPrint('✅ Ride cancelled successfully');
-        
+
         // Notify via WebSocket
         _socketService.cancelRide(reason);
-        
+
         // Disconnect WebSocket
         await _socketService.disconnect();
 
@@ -622,7 +657,7 @@ class RideBookingController extends ChangeNotifier {
   /// Reset booking flow
   void reset() {
     debugPrint('🔄 Resetting booking controller...');
-    
+
     _currentStage = BookingStage.selectingDestination;
     _pickupLocation = null;
     _pickupAddress = null;

@@ -226,9 +226,9 @@ class HomeController extends ChangeNotifier {
       
       if (response.isSuccess && response.data != null) {
         for (var location in response.data!) {
-          if (location.type.toLowerCase() == 'home') {
+          if (location.locationType.toLowerCase() == 'home') {
             _homeAddress = location.address;
-          } else if (location.type.toLowerCase() == 'work') {
+          } else if (location.locationType.toLowerCase() == 'work') {
             _workAddress = location.address;
           }
         }

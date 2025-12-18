@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/driver_available_ride.dart';
 import '../../../../constants/colors.dart';
-import '../driver_controller.dart';
+import '../../drivers/controller/driver_controller.dart';
 import 'ride_card.dart';
 
 class AvailableRidesSection extends StatelessWidget {

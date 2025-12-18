@@ -21,9 +21,9 @@ class PricingService {
       debugPrint('🚗 Fetching vehicle types for city: ${cityName ?? "all"}');
       
       final queryParams = <String, String>{};
-      if (cityName != null) {
-        queryParams['city_name'] = cityName;
-      }
+      if (cityName != null && cityName.isNotEmpty) { // ✅ Add isNotEmpty check
+      queryParams['city_name'] = cityName; // ✅ Change back to 'city_name'
+    }
 
       return await _apiClient.get<List<VehicleType>>(
         '/pricing/vehicle-types/',
@@ -219,10 +219,13 @@ class FareCalculation {
       distanceFare: _parseDouble(json['distance_fare']) ?? 0.0,
       timeFare: _parseDouble(json['time_fare']) ?? 0.0,
       surgeMultiplier: _parseDouble(json['surge_multiplier']) ?? 1.0,
-      fuelAdjustment: _parseDouble(json['fuel_adjustment']) ?? 0.0,
+      fuelAdjustment: _parseDouble(json['fuel_adjustment_total']) ?? 
+                      _parseDouble(json['fuel_adjustment']) ?? 0.0,  // ✅ Support both field names
       totalFare: _parseDouble(json['total_fare']) ?? 0.0,
-      distance: _parseDouble(json['distance']) ?? 0.0,
-      estimatedDuration: json['estimated_duration'] ?? 0,
+      distance: _parseDouble(json['distance_km']) ?? 
+                _parseDouble(json['distance']) ?? 0.0,  // ✅ Use distance_km from backend
+      estimatedDuration: json['estimated_duration_minutes'] ?? 
+                         json['estimated_duration'] ?? 0,  // ✅ Use estimated_duration_minutes from backend
       cityName: json['city_name'],
       vehicleType: json['vehicle_type'],
     );

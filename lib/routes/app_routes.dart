@@ -6,7 +6,7 @@ import '../splash_screen.dart';
 import '../auth/auth_screen.dart';
 import '../presentation/main_navigation_screen.dart';
 
-import '../presentation/screens/ride_booking/destination_selection_screen.dart';
+import '../presentation/screens/ride_booking/destination_selection/destination_selection_screen.dart';
 import '../presentation/screens/ride_booking/ride_options_screen.dart';
 import '../presentation/screens/ride_booking/driver_matching_screen.dart';
 import '../presentation/screens/ride_booking/ride_tracking_screen.dart';

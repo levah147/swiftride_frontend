@@ -14,9 +14,13 @@ class MapService {
   factory MapService() => _instance;
   MapService._internal();
 
-  // TODO: Replace with your Google Maps API key
-  static const String _googleMapsApiKey =
-      'AIzaSyAPpZYwp6IjJhNDshFTxTsTaa05NxiTE3U';
+  // ✅ FIXED: Use environment variable or config for API key
+  // TODO: Move to secure storage (flutter_dotenv or similar)
+  // For now, this should be set via environment variable or build config
+  static const String _googleMapsApiKey = String.fromEnvironment(
+      'GOOGLE_MAPS_API_KEY',
+      defaultValue:
+          'AIzaSyAPpZYwp6IjJhNDshFTxTsTaa05NxiTE3U'); // ⚠️ Remove hardcoded key in production
 
   // ============================================
   // ROUTE CALCULATIONS

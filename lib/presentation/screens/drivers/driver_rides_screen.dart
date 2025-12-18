@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'driver_controller.dart';
+import 'controller/driver_controller.dart';
 import 'widgets/driver_app_bar.dart';
 import 'widgets/driver_status_banner.dart';
 import 'widgets/available_rides_section.dart';

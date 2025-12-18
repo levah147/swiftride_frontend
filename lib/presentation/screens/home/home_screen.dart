@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../presentation/screens/home/controllers/home_controller.dart';
 import '../../../presentation/screens/home/widgets/home_map_widget.dart';
 import '../../../presentation/screens/home/widgets/search_bottom_sheet.dart';
-import '../ride_booking/destination_selection_screen.dart';
+import '../ride_booking/destination_selection/destination_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

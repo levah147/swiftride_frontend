@@ -1,7 +1,7 @@
 // ==================== services/location_service.dart ====================
 // LOCATION SERVICE - Expanded version with comprehensive functionality
 // Handles saved locations, recent locations, and geocoding
-
+import 'dart:async'; // ✅ Add this import for TimeoutException
 import 'package:flutter/foundation.dart';
 import '../models/location.dart';
 import 'api_client.dart';
@@ -249,7 +249,7 @@ class LocationService {
   // LOCATION UTILITIES
   // ============================================
 
-  /// Get current device location
+    /// Get current device location
   Future<Position?> getCurrentLocation() async {
     try {
       // Check permission
@@ -267,12 +267,22 @@ class LocationService {
         return null;
       }
 
-      // Get position
+      // Get position with timeout
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 30), // ✅ Add 30 second timeout
+      ).timeout(
+        Duration(seconds: 30), // ✅ Additional timeout wrapper
+        onTimeout: () {
+          debugPrint('❌ Location request timed out');
+          throw TimeoutException('Location request timed out after 30 seconds');
+        },
       );
 
       return position;
+    } on TimeoutException catch (e) {
+      debugPrint('❌ Location timeout: $e');
+      return null;
     } catch (e) {
       debugPrint('❌ Error getting current location: $e');
       return null;
