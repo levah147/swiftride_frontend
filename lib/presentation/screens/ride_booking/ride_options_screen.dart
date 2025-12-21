@@ -45,6 +45,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   double? _estimatedDistance;
   bool _isLoadingFare = false;
   bool _isBooking = false;
+  String _paymentMethod = 'cash'; // 'cash' or 'wallet'
 
   late AuthService _authService;
 
@@ -92,18 +93,18 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     double lon2,
   ) {
     const double earthRadius = 6371; // Earth's radius in kilometers
-    
+
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
-    
+
     final a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
         (math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLon / 2) *
             math.sin(dLon / 2));
-    
+
     final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    
+
     return earthRadius * c;
   }
 
@@ -186,7 +187,6 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
             ],
           ),
           const SizedBox(width: 16),
-          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +215,6 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
               ],
             ),
           ),
-          
           if (widget.isScheduled)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -249,10 +248,12 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   }
 
   Widget _buildTripInfo(ColorScheme colorScheme) {
-    final estimatedTime = (_estimatedDistance! * 3).toInt(); // Rough estimate: 3 min per km
-    
+    final estimatedTime =
+        (_estimatedDistance! * 3).toInt(); // Rough estimate: 3 min per km
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
       child: Row(
         children: [
           _buildInfoChip(
@@ -324,13 +325,14 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
       itemCount: _availableVehicles.length,
       itemBuilder: (context, index) {
         final vehicle = _availableVehicles[index];
         final isSelected = _selectedIndex == index;
         final fare = vehicle.calculateFare(_estimatedDistance!);
-        
+
         return GestureDetector(
           onTap: () => setState(() => _selectedIndex = index),
           child: AnimatedContainer(
@@ -338,12 +340,14 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isSelected 
-                  ? vehicle.color.withOpacity(0.1) 
+              color: isSelected
+                  ? vehicle.color.withOpacity(0.1)
                   : colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? vehicle.color : colorScheme.outline.withOpacity(0.2),
+                color: isSelected
+                    ? vehicle.color
+                    : colorScheme.outline.withOpacity(0.2),
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -362,9 +366,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                     size: 28,
                   ),
                 ),
-                
                 const SizedBox(width: 16),
-                
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,7 +415,6 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                     ],
                   ),
                 ),
-                
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -444,7 +445,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   Widget _buildBookButton(ColorScheme colorScheme) {
     final selectedVehicle = _availableVehicles[_selectedIndex];
     final fare = selectedVehicle.calculateFare(_estimatedDistance!);
-    
+
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       decoration: BoxDecoration(
@@ -461,55 +462,64 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    color: colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Cash',
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+            GestureDetector(
+              onTap: () => _showPaymentMethodSheet(colorScheme),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: colorScheme.outline.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _paymentMethod == 'cash'
+                          ? Icons.money
+                          : Icons.account_balance_wallet,
+                      color: colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _paymentMethod == 'cash' ? 'Cash' : 'Wallet',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    color: colorScheme.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ],
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
-            
             const SizedBox(height: 16),
-            
             SizedBox(
               width: double.infinity,
               height: AppDimensions.buttonHeightLarge,
               child: ElevatedButton(
-                onPressed: _isBooking ? null : () => _handleBookRide(selectedVehicle, fare),
+                onPressed: _isBooking
+                    ? null
+                    : () => _handleBookRide(selectedVehicle, fare),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: selectedVehicle.color,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+                    borderRadius:
+                        BorderRadius.circular(AppDimensions.radiusMedium),
                   ),
-                  disabledBackgroundColor: selectedVehicle.color.withOpacity(0.5),
+                  disabledBackgroundColor:
+                      selectedVehicle.color.withOpacity(0.5),
                 ),
                 child: _isBooking
                     ? const SizedBox(
@@ -524,8 +534,8 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            widget.isScheduled 
-                                ? 'Schedule ${selectedVehicle.name}' 
+                            widget.isScheduled
+                                ? 'Schedule ${selectedVehicle.name}'
                                 : 'Book ${selectedVehicle.name}',
                             style: const TextStyle(
                               fontSize: 16,
@@ -551,7 +561,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
   }
 
   /// Handle ride booking with real location data
-  Future<void> _handleBookRide(VehicleType selectedVehicle, double fare) async { 
+  Future<void> _handleBookRide(VehicleType selectedVehicle, double fare) async {
     setState(() => _isBooking = true);
 
     try {
@@ -571,18 +581,20 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
       );
 
       // Set destination in controller with real coordinates
-      await controller.setDestinationLocation( 
+      await controller.setDestinationLocation(
         widget.destinationLatLng,
         widget.destinationAddress,
       );
 
       // Set selected vehicle
       await controller.selectVehicle(selectedVehicle);
-      
+
       debugPrint('📱 Booking ride:');
       debugPrint('   User: ${user.id}');
-      debugPrint('   From: ${widget.pickupAddress} (${widget.pickupLatLng.latitude}, ${widget.pickupLatLng.longitude})');
-      debugPrint('   To: ${widget.destinationAddress} (${widget.destinationLatLng.latitude}, ${widget.destinationLatLng.longitude})');
+      debugPrint(
+          '   From: ${widget.pickupAddress} (${widget.pickupLatLng.latitude}, ${widget.pickupLatLng.longitude})');
+      debugPrint(
+          '   To: ${widget.destinationAddress} (${widget.destinationLatLng.latitude}, ${widget.destinationLatLng.longitude})');
       debugPrint('   Vehicle: ${selectedVehicle.name}');
       debugPrint('   Distance: ${_estimatedDistance!.toStringAsFixed(2)} km');
       debugPrint('   Fare: ${selectedVehicle.formatPrice(fare)}');
@@ -623,7 +635,7 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
       }
     } catch (e) {
       debugPrint('❌ Booking error: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -644,6 +656,165 @@ class _RideOptionsScreenState extends State<RideOptionsScreen> {
         setState(() => _isBooking = false);
       }
     }
+  }
+
+  /// Show payment method selection bottom sheet
+  void _showPaymentMethodSheet(ColorScheme colorScheme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select payment method',
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Cash option
+              _buildPaymentOption(
+                icon: Icons.money,
+                title: 'Cash',
+                subtitle: 'Pay with cash after the ride',
+                value: 'cash',
+                colorScheme: colorScheme,
+              ),
+
+              const SizedBox(height: 12),
+
+              // Wallet option
+              _buildPaymentOption(
+                icon: Icons.account_balance_wallet,
+                title: 'Wallet',
+                subtitle: 'Pay from your wallet balance',
+                value: 'wallet',
+                colorScheme: colorScheme,
+                badge: 'Coming soon',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String value,
+    required ColorScheme colorScheme,
+    String? badge,
+  }) {
+    final isSelected = _paymentMethod == value;
+    final hasComingSoon = badge != null;
+
+    return GestureDetector(
+      onTap: hasComingSoon
+          ? null
+          : () {
+              setState(() => _paymentMethod = value);
+              Navigator.pop(context);
+            },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? colorScheme.primaryContainer : colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? colorScheme.primary
+                : colorScheme.outline.withOpacity(0.2),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              color: colorScheme.onSecondaryContainer,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: colorScheme.primary,
+                size: 24,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

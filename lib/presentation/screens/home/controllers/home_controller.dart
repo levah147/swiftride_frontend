@@ -1,6 +1,6 @@
 // ==================== controllers/home_controller.dart ====================
-// HOME CONTROLLER - Business logic for home screen
-// Manages location, vehicles, and user interactions
+// HOME CONTROLLER - Enhanced with robust city detection
+// Features: Retry logic, backend fallback, better error handling
 
 import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -35,6 +35,7 @@ class HomeController extends ChangeNotifier {
   
   // Error state
   String? _errorMessage;
+  bool _showLocationError = false;
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -51,6 +52,7 @@ class HomeController extends ChangeNotifier {
   bool get isLoadingRecent => _isLoadingRecent;
   bool get isLoading => _isLoadingLocation || _isLoadingVehicles || _isLoadingRecent;
   String? get errorMessage => _errorMessage;
+  bool get showLocationError => _showLocationError;
   
   LatLng? get currentLatLng => _currentPosition != null
       ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
@@ -60,7 +62,6 @@ class HomeController extends ChangeNotifier {
   // INITIALIZATION
   // ============================================
 
-  /// Initialize home screen
   Future<void> initialize() async {
     debugPrint('🏠 Initializing home controller');
     
@@ -78,14 +79,15 @@ class HomeController extends ChangeNotifier {
   }
 
   // ============================================
-  // LOCATION DETECTION
+  // ENHANCED LOCATION DETECTION
   // ============================================
 
-  /// Get current location and detect city
+  /// Get current location and detect city with retry logic
   Future<void> getCurrentLocationAndDetectCity() async {
     try {
       _isLoadingLocation = true;
       _errorMessage = null;
+      _showLocationError = false;
       notifyListeners();
 
       // Check permissions
@@ -94,7 +96,8 @@ class HomeController extends ChangeNotifier {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           _setError('Location permission denied');
-          _currentCity = 'Permission Denied';
+          _currentCity = 'Makurdi';
+          _showLocationError = true;
           _isLoadingLocation = false;
           notifyListeners();
           return;
@@ -102,78 +105,175 @@ class HomeController extends ChangeNotifier {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _setError('Please enable location in settings');
-        _currentCity = 'Permission Required';
+        _setError('Please enable location in Settings');
+        _currentCity = 'Makurdi';
+        _showLocationError = true;
         _isLoadingLocation = false;
         notifyListeners();
         return;
       }
 
-      // Get position with high accuracy
+      // Get position with longer timeout and medium accuracy
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
+        desiredAccuracy: LocationAccuracy.medium, // ✅ Changed from high
+        timeLimit: const Duration(seconds: 30), // ✅ Increased from 15
       );
 
       _currentPosition = position;
       debugPrint('📍 Location detected: ${position.latitude}, ${position.longitude}');
 
-      // Detect city from coordinates
-      await _detectCityFromCoordinates(position);
+      // Detect city with retry and fallback
+      await _detectCityWithRetry(position);
 
     } catch (e) {
       debugPrint('❌ Location error: $e');
-      _setError('Could not detect location');
-      _currentCity = 'Makurdi'; // Fallback
-      _isLoadingLocation = false;
-      notifyListeners();
+      _handleLocationError(e);
     }
   }
 
-  /// Detect city name from coordinates using reverse geocoding
-  Future<void> _detectCityFromCoordinates(Position position) async {
+  /// Detect city with retry logic and backend fallback
+  Future<void> _detectCityWithRetry(Position position) async {
+    const maxRetries = 3;
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('🔍 City detection attempt $attempt/$maxRetries');
+        
+        // Try device geocoding first
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception('Geocoding timeout'),
+        );
+
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          
+          // Debug: Log all placemark data
+          debugPrint('📍 Placemark data: locality=${place.locality}, '
+              'subAdmin=${place.subAdministrativeArea}, '
+              'admin=${place.administrativeArea}');
+          
+          // Extract city name with better logic
+          String cityName = _extractCityName(place);
+          String country = place.country ?? '';
+
+          if (cityName.isNotEmpty && cityName != 'Unknown') {
+            _currentCity = cityName;
+            _currentCountry = country;
+            _isLoadingLocation = false;
+            _showLocationError = false;
+            
+            debugPrint('✅ City detected: $cityName, $country');
+            notifyListeners();
+            return; // Success!
+          }
+        }
+        
+        // If we got here, placemark was empty or invalid
+        throw Exception('Invalid placemark data');
+        
+      } catch (e) {
+        debugPrint('⚠️ Geocoding attempt $attempt failed: $e');
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          await Future.delayed(Duration(seconds: attempt * 2));
+        }
+      }
+    }
+    
+    // All device geocoding attempts failed, try backend
+    debugPrint('🌐 Device geocoding failed, trying backend...');
+    await _tryBackendGeocoding(position);
+  }
+
+  /// Extract city name from placemark with better logic
+  String _extractCityName(Placemark place) {
+    // Priority order for Nigeria and similar regions
+    String? cityName;
+    
+    // 1. Try locality (most accurate for cities)
+    if (place.locality != null && place.locality!.isNotEmpty) {
+      cityName = place.locality;
+    }
+    // 2. Try subAdministrativeArea (districts/LGAs)
+    else if (place.subAdministrativeArea != null && 
+             place.subAdministrativeArea!.isNotEmpty) {
+      cityName = place.subAdministrativeArea;
+    }
+    // 3. Try administrativeArea (states - use as last resort)
+    else if (place.administrativeArea != null && 
+             place.administrativeArea!.isNotEmpty) {
+      cityName = place.administrativeArea;
+    }
+    
+    // Clean up city name
+    if (cityName != null) {
+      cityName = cityName.trim();
+      // Remove common suffixes
+      cityName = cityName.replaceAll(RegExp(r'\s+(State|LGA|Municipality)$', caseSensitive: false), '');
+    }
+    
+    return cityName ?? 'Unknown';
+  }
+
+  /// Try backend geocoding as fallback
+  Future<void> _tryBackendGeocoding(Position position) async {
     try {
-      debugPrint('🔍 Detecting city from coordinates');
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
+      final response = await _locationService.reverseGeocode(
+        latitude: position.latitude,
+        longitude: position.longitude,
       );
-
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        
-        // Extract city name
-        String cityName = place.locality ?? 
-                         place.subAdministrativeArea ?? 
-                         place.administrativeArea ?? 
-                         'Makurdi';
-        
-        String country = place.country ?? '';
-
-        _currentCity = cityName;
-        _currentCountry = country;
+      
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        _currentCity = data['city'] ?? data['town'] ?? data['village'] ?? 'Makurdi';
+        _currentCountry = data['country'] ?? '';
         _isLoadingLocation = false;
+        _showLocationError = false;
         
-        debugPrint('✅ City detected: $cityName, $country');
+        debugPrint('✅ Backend geocoding success: $_currentCity');
         notifyListeners();
-
-        // Reload vehicles for this city
-        await loadAvailableVehicles();
+        return;
       }
     } catch (e) {
-      debugPrint('❌ Geocoding error: $e');
-      _currentCity = 'Makurdi';
-      _isLoadingLocation = false;
-      notifyListeners();
+      debugPrint('❌ Backend geocoding failed: $e');
     }
+    
+    // Final fallback
+    _currentCity = 'Makurdi';
+    _setError('Could not detect your city. Using Makurdi as default.');
+    _showLocationError = true;
+    _isLoadingLocation = false;
+    notifyListeners();
+  }
+
+  /// Handle location errors
+  void _handleLocationError(dynamic error) {
+    String errorMsg;
+    
+    if (error.toString().contains('timeout')) {
+      errorMsg = 'Location detection timed out. Please ensure GPS is enabled.';
+    } else if (error.toString().contains('denied')) {
+      errorMsg = 'Location permission denied. Please enable in Settings.';
+    } else {
+      errorMsg = 'Could not detect location. Using Makurdi as default.';
+    }
+    
+    _setError(errorMsg);
+    _currentCity = 'Makurdi';
+    _showLocationError = true;
+    _isLoadingLocation = false;
+    notifyListeners();
   }
 
   // ============================================
   // VEHICLE LOADING
   // ============================================
 
-  /// Load available vehicles from backend
   Future<void> loadAvailableVehicles() async {
     try {
       _isLoadingVehicles = true;
@@ -186,7 +286,6 @@ class HomeController extends ChangeNotifier {
       if (response.isSuccess && response.data != null) {
         _availableVehicles = response.data!.where((v) => v.available).toList();
         
-        // Auto-select first vehicle
         if (_availableVehicles.isNotEmpty && _selectedVehicle == null) {
           _selectedVehicle = _availableVehicles.first;
         }
@@ -207,7 +306,6 @@ class HomeController extends ChangeNotifier {
     }
   }
 
-  /// Fallback to local vehicle data
   void _loadLocalVehiclesFallback() {
     _availableVehicles = VehicleTypes.getVehiclesForCity(_currentCity);
     if (_availableVehicles.isNotEmpty && _selectedVehicle == null) {
@@ -219,7 +317,6 @@ class HomeController extends ChangeNotifier {
   // SAVED PLACES
   // ============================================
 
-  /// Load user's saved home and work addresses
   Future<void> loadSavedPlaces() async {
     try {
       final response = await _locationService.getSavedLocations();
@@ -245,7 +342,6 @@ class HomeController extends ChangeNotifier {
   // RECENT LOCATIONS
   // ============================================
 
-  /// Load recent locations from backend
   Future<void> loadRecentLocations() async {
     try {
       _isLoadingRecent = true;
@@ -271,7 +367,6 @@ class HomeController extends ChangeNotifier {
   // VEHICLE SELECTION
   // ============================================
 
-  /// Select a vehicle type
   void selectVehicle(VehicleType vehicle) {
     _selectedVehicle = vehicle;
     debugPrint('🚗 Vehicle selected: ${vehicle.name}');
@@ -289,20 +384,33 @@ class HomeController extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _showLocationError = false;
     notifyListeners();
+  }
+
+  // ============================================
+  // MANUAL CITY SELECTION
+  // ============================================
+
+  /// Allow user to manually set city if auto-detection fails
+  Future<void> setManualCity(String cityName) async {
+    _currentCity = cityName;
+    _showLocationError = false;
+    notifyListeners();
+    
+    // Reload vehicles for new city
+    await loadAvailableVehicles();
   }
 
   // ============================================
   // REFRESH
   // ============================================
 
-  /// Refresh all data
   Future<void> refresh() async {
     debugPrint('🔄 Refreshing home screen');
     await initialize();
   }
 
-  /// Refresh only vehicles
   Future<void> refreshVehicles() async {
     await loadAvailableVehicles();
   }

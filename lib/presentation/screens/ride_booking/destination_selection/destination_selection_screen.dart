@@ -1,5 +1,5 @@
 // ==================== destination_selection_screen.dart ====================
-// MAIN SCREEN - Clean, focused, delegates to components
+// REDESIGNED - Multi-stop support, editable pickup, real-time search
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -9,7 +9,9 @@ import 'package:swiftride/routes/route_arguments.dart';
 import '../../../../services/location_service.dart';
 import '../../../../services/geocoding_service.dart';
 import '../../../../models/location.dart';
-import 'widgets/destination_header.dart';
+import '../../../../models/route_stop.dart';
+import 'widgets/route_header.dart';
+import 'widgets/route_stops_input.dart';
 import 'widgets/location_list_items.dart';
 import 'widgets/continue_button.dart';
 
@@ -30,59 +32,207 @@ class DestinationSelectionScreen extends StatefulWidget {
 
 class _DestinationSelectionScreenState
     extends State<DestinationSelectionScreen> {
-  // Controllers & Focus
-  final TextEditingController _fromController = TextEditingController();
-  final TextEditingController _toController = TextEditingController();
-  final FocusNode _toFocusNode = FocusNode();
-
   // Services
   final LocationService _locationService = LocationService();
   final GeocodingService _geocodingService = GeocodingService();
 
-  // State
-  bool _isScheduled = false;
-  String _searchQuery = '';
-  bool _isLoadingSaved = false;
-  bool _isLoadingRecent = false;
-  bool _isSearching = false;
+  // Route stops state (replaces _fromController/_toController)
+  List<RouteStop> _routeStops = [];
+  final Map<String, TextEditingController> _stopControllers = {};
+  final Map<String, FocusNode> _stopFocusNodes = {};
 
-  // Data
-  List<SavedLocation> _savedLocations = [];
-  List<RecentLocation> _recentLocations = [];
+  // Currently focused/active stop for search
+  String? _activeStopId;
+
+  // Search state
+  bool _isSearching = false;
   List<PlaceSuggestion> _placeSuggestions = [];
 
-  // Selected destination
-  LatLng? _selectedDestinationLatLng;
-  String? _selectedDestinationAddress;
+  // Saved and recent locations
+  bool _isLoadingSaved = false;
+  bool _isLoadingRecent = false;
+  List<SavedLocation> _savedLocations = [];
+  List<RecentLocation> _recentLocations = [];
+
+  // Constants
+  static const int maxStops = 5; // pickup + 3 waypoints + destination
 
   @override
   void initState() {
     super.initState();
-    _fromController.text = widget.pickupAddress ?? 'Current Location';
-    
+    _initializeRouteStops();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _toFocusNode.requestFocus();
       _loadSavedAndRecentLocations();
     });
-
-    _toController.addListener(_onSearchQueryChanged);
   }
 
   @override
   void dispose() {
-    _fromController.dispose();
-    _toController.dispose();
-    _toFocusNode.dispose();
+    // Dispose all controllers and focus nodes
+    for (var controller in _stopControllers.values) {
+      controller.dispose();
+    }
+    for (var focusNode in _stopFocusNodes.values) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
   // ============================================
-  // SEARCH & QUERY HANDLING
+  // INITIALIZATION
   // ============================================
 
-  void _onSearchQueryChanged() {
-    final query = _toController.text;
-    setState(() => _searchQuery = query);
+  void _initializeRouteStops() {
+    // Initialize with pickup and destination
+    final pickup = RouteStop.pickup(
+      address: widget.pickupAddress ?? '',
+      latitude: widget.pickupLatLng?.latitude ?? 0,
+      longitude: widget.pickupLatLng?.longitude ?? 0,
+      placeName: widget.pickupAddress ?? 'Current Location',
+    );
+
+    final destination = RouteStop.destination(
+      order: 1,
+      address: '',
+      latitude: 0,
+      longitude: 0,
+    );
+
+    _routeStops = [pickup, destination];
+
+    // Create controllers and focus nodes
+    for (var stop in _routeStops) {
+      _stopControllers[stop.id] = TextEditingController(text: stop.displayName);
+      _stopFocusNodes[stop.id] = FocusNode();
+
+      // Add listener for search
+      _stopControllers[stop.id]!.addListener(() {
+        _onStopTextChanged(stop.id);
+      });
+
+      // Focus listener to track active stop
+      _stopFocusNodes[stop.id]!.addListener(() {
+        if (_stopFocusNodes[stop.id]!.hasFocus) {
+          setState(() => _activeStopId = stop.id);
+        }
+      });
+    }
+
+    // Auto-focus destination field
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _stopFocusNodes['destination']?.requestFocus();
+    });
+  }
+
+  // ============================================
+  // STOP MANAGEMENT
+  // ============================================
+
+  void _addStop() {
+    if (_routeStops.length >= maxStops) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $maxStops stops allowed')),
+      );
+      return;
+    }
+
+    setState(() {
+      // Insert waypoint before destination
+      final waypointOrder = _routeStops.length - 1;
+      final waypoint = RouteStop.waypoint(
+        order: waypointOrder,
+        address: '',
+        latitude: 0,
+        longitude: 0,
+      );
+
+      // Update destination order
+      final destination = _routeStops.last.copyWith(order: waypointOrder + 1);
+
+      // Remove old destination, add waypoint, add new destination
+      _routeStops.removeLast();
+      _routeStops.add(waypoint);
+      _routeStops.add(destination);
+
+      // Create controller and focus node for new waypoint
+      _stopControllers[waypoint.id] = TextEditingController();
+      _stopFocusNodes[waypoint.id] = FocusNode();
+
+      _stopControllers[waypoint.id]!.addListener(() {
+        _onStopTextChanged(waypoint.id);
+      });
+
+      _stopFocusNodes[waypoint.id]!.addListener(() {
+        if (_stopFocusNodes[waypoint.id]!.hasFocus) {
+          setState(() => _activeStopId = waypoint.id);
+        }
+      });
+    });
+
+    // Auto-focus new waypoint
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _stopFocusNodes[_routeStops[_routeStops.length - 2].id]?.requestFocus();
+    });
+  }
+
+  void _removeStop(String stopId) {
+    setState(() {
+      final index = _routeStops.indexWhere((s) => s.id == stopId);
+      if (index == -1) return;
+
+      _routeStops.removeAt(index);
+
+      // Dispose controller and focus node
+      _stopControllers[stopId]?.dispose();
+      _stopFocusNodes[stopId]?.dispose();
+      _stopControllers.remove(stopId);
+      _stopFocusNodes.remove(stopId);
+
+      // Reorder remaining stops
+      for (int i = 0; i < _routeStops.length; i++) {
+        _routeStops[i] = _routeStops[i].copyWith(order: i);
+      }
+    });
+  }
+
+  void _moveStopUp(String stopId) {
+    final index = _routeStops.indexWhere((s) => s.id == stopId);
+    if (index <= 1) return; // Can't move above pickup
+
+    setState(() {
+      final stop = _routeStops.removeAt(index);
+      _routeStops.insert(index - 1, stop);
+
+      // Reorder
+      for (int i = 0; i < _routeStops.length; i++) {
+        _routeStops[i] = _routeStops[i].copyWith(order: i);
+      }
+    });
+  }
+
+  void _moveStopDown(String stopId) {
+    final index = _routeStops.indexWhere((s) => s.id == stopId);
+    if (index == -1 || index >= _routeStops.length - 1)
+      return; // Can't move below destination
+
+    setState(() {
+      final stop = _routeStops.removeAt(index);
+      _routeStops.insert(index + 1, stop);
+
+      // Reorder
+      for (int i = 0; i < _routeStops.length; i++) {
+        _routeStops[i] = _routeStops[i].copyWith(order: i);
+      }
+    });
+  }
+
+  // ============================================
+  // SEARCH & LOCATION HANDLING
+  // ============================================
+
+  void _onStopTextChanged(String stopId) {
+    final query = _stopControllers[stopId]?.text ?? '';
 
     if (query.isEmpty) {
       setState(() {
@@ -124,6 +274,120 @@ class _DestinationSelectionScreenState
     }
   }
 
+  Future<void> _selectPlaceSuggestion(PlaceSuggestion suggestion) async {
+    if (_activeStopId == null) return;
+
+    final details = await _geocodingService.getPlaceDetails(suggestion.placeId);
+
+    if (details == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not get place details')),
+        );
+      }
+      return;
+    }
+
+    // Update the active stop
+    final index = _routeStops.indexWhere((s) => s.id == _activeStopId);
+    if (index == -1) return;
+
+    setState(() {
+      _routeStops[index] = _routeStops[index].copyWith(
+        address: details.formattedAddress,
+        latitude: details.location.latitude,
+        longitude: details.location.longitude,
+        placeId: details.placeId,
+        placeName: details.name,
+      );
+
+      _stopControllers[_activeStopId]?.text = details.name;
+      _placeSuggestions = [];
+    });
+
+    _stopFocusNodes[_activeStopId]?.unfocus();
+
+    await _saveRecentLocation(
+      address: details.formattedAddress,
+      latitude: details.location.latitude,
+      longitude: details.location.longitude,
+    );
+  }
+
+  Future<void> _selectSavedLocation(SavedLocation location) async {
+    if (_activeStopId == null) return;
+
+    final index = _routeStops.indexWhere((s) => s.id == _activeStopId);
+    if (index == -1) return;
+
+    setState(() {
+      _routeStops[index] = _routeStops[index].copyWith(
+        address: location.address,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        placeName: location.displayName,
+      );
+
+      _stopControllers[_activeStopId]?.text = location.displayName;
+    });
+
+    _stopFocusNodes[_activeStopId]?.unfocus();
+
+    await _saveRecentLocation(
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    );
+  }
+
+  Future<void> _selectRecentLocation(RecentLocation location) async {
+    if (_activeStopId == null) return;
+
+    final index = _routeStops.indexWhere((s) => s.id == _activeStopId);
+    if (index == -1) return;
+
+    setState(() {
+      _routeStops[index] = _routeStops[index].copyWith(
+        address: location.address,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        placeName: location.placeName,
+      );
+
+      _stopControllers[_activeStopId]?.text = location.placeName;
+    });
+
+    _stopFocusNodes[_activeStopId]?.unfocus();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    // Get current location and update pickup
+    try {
+      final currentPosition = widget.pickupLatLng;
+      if (currentPosition == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not get current location')),
+        );
+        return;
+      }
+
+      final address = await _geocodingService.reverseGeocode(currentPosition);
+
+      setState(() {
+        _routeStops[0] = _routeStops[0].copyWith(
+          address: address?.formattedAddress ?? 'Current Location',
+          latitude: currentPosition.latitude,
+          longitude: currentPosition.longitude,
+          placeName: 'Current Location',
+        );
+
+        _stopControllers['pickup']?.text = 'Current Location';
+      });
+    } catch (e) {
+      debugPrint('Error getting current location: $e');
+    }
+  }
+
   // ============================================
   // DATA LOADING
   // ============================================
@@ -157,70 +421,6 @@ class _DestinationSelectionScreenState
     }
   }
 
-  // ============================================
-  // SELECTION HANDLERS
-  // ============================================
-
-  Future<void> _selectPlaceSuggestion(PlaceSuggestion suggestion) async {
-    final details = await _geocodingService.getPlaceDetails(suggestion.placeId);
-
-    if (details == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not get place details')),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _toController.text = details.name;
-      _selectedDestinationLatLng = LatLng(
-        details.location.latitude,
-        details.location.longitude,
-      );
-      _selectedDestinationAddress = details.formattedAddress;
-      _placeSuggestions = [];
-    });
-
-    _toFocusNode.unfocus();
-    await _saveRecentLocation(
-      address: details.formattedAddress,
-      latitude: details.location.latitude,
-      longitude: details.location.longitude,
-    );
-  }
-
-  Future<void> _selectSavedLocation(SavedLocation location) async {
-    setState(() {
-      _toController.text = location.displayName;
-      _selectedDestinationLatLng = LatLng(location.latitude, location.longitude);
-      _selectedDestinationAddress = location.address;
-    });
-
-    _toFocusNode.unfocus();
-    await _saveRecentLocation(
-      address: location.address,
-      latitude: location.latitude,
-      longitude: location.longitude,
-    );
-  }
-
-  Future<void> _selectRecentLocation(RecentLocation location) async {
-    setState(() {
-      _toController.text = location.placeName;
-      _selectedDestinationLatLng = LatLng(location.latitude, location.longitude);
-      _selectedDestinationAddress = location.address;
-    });
-
-    _toFocusNode.unfocus();
-    await _saveRecentLocation(
-      address: location.address,
-      latitude: location.latitude,
-      longitude: location.longitude,
-    );
-  }
-
   Future<void> _saveRecentLocation({
     required String address,
     required double latitude,
@@ -232,7 +432,7 @@ class _DestinationSelectionScreenState
         latitude: latitude,
         longitude: longitude,
       );
-      
+
       final response = await _locationService.getRecentLocations(limit: 10);
       if (response.isSuccess && response.data != null && mounted) {
         setState(() => _recentLocations = response.data!);
@@ -242,91 +442,70 @@ class _DestinationSelectionScreenState
     }
   }
 
-  Future<void> _addSavedPlace(String type) async {
-    if (_selectedDestinationLatLng == null || _selectedDestinationAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a destination first')),
-      );
-      return;
-    }
+  // ============================================
+  // NAVIGATION & VALIDATION
+  // ============================================
 
-    final existing = _savedLocations.firstWhere(
-      (loc) => loc.locationType == type,
-      orElse: () => SavedLocation(
-        id: '',
-        locationType: '',
-        locationTypeDisplay: '',
-        address: '',
-        latitude: 0,
-        longitude: 0,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-    );
-
-    if (existing.id.isNotEmpty) {
-      final response = await _locationService.updateSavedLocation(
-        locationId: existing.id,
-        address: _selectedDestinationAddress!,
-        latitude: _selectedDestinationLatLng!.latitude,
-        longitude: _selectedDestinationLatLng!.longitude,
-      );
-
-      if (response.isSuccess && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${type == 'home' ? 'Home' : 'Work'} location updated')),
-        );
-        _loadSavedAndRecentLocations();
-      }
-    } else {
-      final response = await _locationService.addSavedLocation(
-        type: type,
-        address: _selectedDestinationAddress!,
-        latitude: _selectedDestinationLatLng!.latitude,
-        longitude: _selectedDestinationLatLng!.longitude,
-      );
-
-      if (response.isSuccess && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${type == 'home' ? 'Home' : 'Work'} location saved')),
-        );
-        _loadSavedAndRecentLocations();
-      }
-    }
+  bool get _canContinue {
+    // All stops must have valid coordinates
+    return _routeStops.length >= 2 &&
+        _routeStops.every((stop) => stop.hasValidLocation);
   }
 
-  void _handleClearDestination() {
-    _toController.clear();
-    setState(() {
-      _selectedDestinationLatLng = null;
-      _selectedDestinationAddress = null;
-    });
+  bool get _shouldShowButton {
+    // Show button if any stop is being edited or has content
+    return _routeStops
+        .any((stop) => _stopControllers[stop.id]?.text.isNotEmpty ?? false);
+  }
+
+  bool get _shouldShowRecent {
+    // Show recent only if no stop is being actively searched
+    return _stopControllers.values.every((c) =>
+            c.text.isEmpty ||
+            _routeStops.any(
+                (s) => _stopControllers[s.id] == c && s.hasValidLocation)) &&
+        _recentLocations.isNotEmpty;
   }
 
   void _handleContinue() {
-    if (_selectedDestinationLatLng == null || widget.pickupLatLng == null) {
+    if (!_canContinue) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please select valid pickup and destination locations'),
+          content: const Text('Please select valid locations for all stops'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
     }
 
+    // Get pickup and destination
+    final pickup = _routeStops.first;
+    final destination = _routeStops.last;
+
+    // Get waypoints (everything between pickup and destination)
+    final waypoints = _routeStops.length > 2
+        ? _routeStops.sublist(1, _routeStops.length - 1)
+        : null;
+
     Navigator.pushNamed(
       context,
       AppRoutes.rideOptions,
       arguments: RideOptionsArguments(
-        from: _fromController.text,
-        to: _toController.text,
-        isScheduled: _isScheduled,
-        pickupLatLng: widget.pickupLatLng!,
-        destinationLatLng: _selectedDestinationLatLng!,
-        pickupAddress: widget.pickupAddress ?? _fromController.text,
-        destinationAddress: _selectedDestinationAddress ?? _toController.text,
+        from: pickup.displayName,
+        to: destination.displayName,
+        isScheduled: false, // Removed schedule toggle
+        pickupLatLng: pickup.latLng,
+        destinationLatLng: destination.latLng,
+        pickupAddress: pickup.address,
+        destinationAddress: destination.address,
+        waypoints: waypoints,
       ),
     );
+  }
+
+  void _handleClose() {
+    // Navigate to home instead of just popping
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   // ============================================
@@ -343,21 +522,39 @@ class _DestinationSelectionScreenState
       body: SafeArea(
         child: Column(
           children: [
-            DestinationHeader(
-              fromController: _fromController,
-              toController: _toController,
-              toFocusNode: _toFocusNode,
-              isScheduled: _isScheduled,
-              onScheduledChanged: (value) => setState(() => _isScheduled = value),
-              onBack: () => Navigator.pop(context),
-              onClearDestination: _handleClearDestination,
+            RouteHeader(onClose: _handleClose),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.paddingLarge,
+              ),
+              child: RouteStopsInput(
+                stops: _routeStops,
+                controllers: _stopControllers,
+                focusNodes: _stopFocusNodes,
+                onStopChanged: (stopId, query) {
+                  // Handled by text controller listeners
+                },
+                onAddStop: _addStop,
+                onRemoveStop: _removeStop,
+                onMoveStopUp: _moveStopUp,
+                onMoveStopDown: _moveStopDown,
+                onUseCurrentLocationForPickup: _useCurrentLocation,
+                canAddMoreStops: _routeStops.length < maxStops,
+                maxStops: maxStops,
+              ),
             ),
-            Divider(height: 1, color: colorScheme.outline.withOpacity(0.2)),
+            Divider(
+              height: 32,
+              color: colorScheme.outline.withOpacity(0.2),
+            ),
             Expanded(
               child: _buildContent(colorScheme),
             ),
-            if (_toController.text.isNotEmpty && _selectedDestinationLatLng != null)
-              ContinueButton(onPressed: _handleContinue),
+            if (_shouldShowButton)
+              ContinueButton(
+                onPressed: _canContinue ? _handleContinue : null,
+              ),
           ],
         ),
       ),
@@ -365,14 +562,17 @@ class _DestinationSelectionScreenState
   }
 
   Widget _buildContent(ColorScheme colorScheme) {
-    if (_searchQuery.isNotEmpty && _placeSuggestions.isNotEmpty) {
+    // Show search results if actively searching
+    if (_placeSuggestions.isNotEmpty) {
       return _buildPlaceSuggestions(colorScheme);
     }
-    
-    if (_searchQuery.isNotEmpty && _isSearching) {
+
+    // Show loading if searching
+    if (_isSearching) {
       return _buildLoading(colorScheme);
     }
-    
+
+    // Show default content (saved + recent)
     return _buildDefaultContent(colorScheme);
   }
 
@@ -380,44 +580,34 @@ class _DestinationSelectionScreenState
     return ListView(
       padding: const EdgeInsets.all(AppDimensions.paddingLarge),
       children: [
+        // Saved places section
         LocationSectionHeader(title: 'Saved places'),
         const SizedBox(height: 8),
-        
+
         if (_isLoadingSaved)
           const Center(child: CircularProgressIndicator())
         else if (_savedLocations.isEmpty)
-          AddSavedPlaceItem(type: 'home', onTap: () => _addSavedPlace('home'))
+          const SizedBox.shrink()
         else
           ..._savedLocations.map((location) => SavedLocationItem(
-            location: location,
-            onTap: () => _selectSavedLocation(location),
-          )),
-
-        if (!_savedLocations.any((loc) => loc.locationType == 'work'))
-          AddSavedPlaceItem(type: 'work', onTap: () => _addSavedPlace('work')),
+                location: location,
+                onTap: () => _selectSavedLocation(location),
+              )),
 
         const SizedBox(height: 24),
-        LocationSectionHeader(title: 'Recent'),
-        const SizedBox(height: 8),
-        
-        if (_isLoadingRecent)
-          const Center(child: CircularProgressIndicator())
-        else if (_recentLocations.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'No recent locations',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          )
-        else
-          ..._recentLocations.map((location) => RecentLocationItem(
-            location: location,
-            onTap: () => _selectRecentLocation(location),
-          )),
+
+        // Recent locations section (only if user is not typing)
+        if (_shouldShowRecent) ...[
+          LocationSectionHeader(title: 'Recent'),
+          const SizedBox(height: 8),
+          if (_isLoadingRecent)
+            const Center(child: CircularProgressIndicator())
+          else
+            ..._recentLocations.map((location) => RecentLocationItem(
+                  location: location,
+                  onTap: () => _selectRecentLocation(location),
+                )),
+        ],
       ],
     );
   }
@@ -429,9 +619,9 @@ class _DestinationSelectionScreenState
         LocationSectionHeader(title: 'Search results'),
         const SizedBox(height: 8),
         ..._placeSuggestions.map((suggestion) => PlaceSuggestionItem(
-          suggestion: suggestion,
-          onTap: () => _selectPlaceSuggestion(suggestion),
-        )),
+              suggestion: suggestion,
+              onTap: () => _selectPlaceSuggestion(suggestion),
+            )),
       ],
     );
   }

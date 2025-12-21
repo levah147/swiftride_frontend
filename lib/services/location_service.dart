@@ -1,7 +1,8 @@
 // ==================== services/location_service.dart ====================
-// LOCATION SERVICE - Expanded version with comprehensive functionality
-// Handles saved locations, recent locations, and geocoding
-import 'dart:async'; // ✅ Add this import for TimeoutException
+// ENHANCED LOCATION SERVICE - Added backend reverse geocoding
+// Handles saved locations, recent locations, and robust geocoding
+
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/location.dart';
 import 'api_client.dart';
@@ -16,7 +17,6 @@ class LocationService {
   // SAVED LOCATIONS (Home, Work, Favorites)
   // ============================================
 
-  /// Get all saved locations
   Future<ApiResponse<List<SavedLocation>>> getSavedLocations() async {
     try {
       final response = await _apiClient.get<List<dynamic>>(
@@ -45,7 +45,6 @@ class LocationService {
     }
   }
 
-  /// Add a saved location (Home/Work/Favorite)
   Future<ApiResponse<SavedLocation>> addSavedLocation({
     required String type,
     required String address,
@@ -85,7 +84,6 @@ class LocationService {
     }
   }
 
-  /// Update a saved location
   Future<ApiResponse<SavedLocation>> updateSavedLocation({
     required String locationId,
     String? address,
@@ -124,7 +122,6 @@ class LocationService {
     }
   }
 
-  /// Delete a saved location
   Future<ApiResponse<void>> deleteSavedLocation(String locationId) async {
     try {
       final response = await _apiClient.delete<void>(
@@ -152,7 +149,6 @@ class LocationService {
   // RECENT LOCATIONS
   // ============================================
 
-  /// Get recent locations
   Future<ApiResponse<List<RecentLocation>>> getRecentLocations({
     int limit = 10,
   }) async {
@@ -183,7 +179,6 @@ class LocationService {
     }
   }
 
-  /// Add a recent location
   Future<ApiResponse<RecentLocation>> addRecentLocation({
     required String address,
     required double latitude,
@@ -221,7 +216,6 @@ class LocationService {
     }
   }
 
-  /// Clear all recent locations
   Future<ApiResponse<void>> clearRecentLocations() async {
     try {
       final response = await _apiClient.delete<void>(
@@ -246,13 +240,64 @@ class LocationService {
   }
 
   // ============================================
+  // 🆕 BACKEND REVERSE GEOCODING (NEW!)
+  // ============================================
+
+  /// Convert coordinates to city name using backend API
+  /// This is more reliable than device geocoding for Nigeria/Africa
+  Future<ApiResponse<Map<String, String>>> reverseGeocode({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      debugPrint('🌐 Backend reverse geocoding: $latitude, $longitude');
+      
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/locations/reverse-geocode/?lat=$latitude&lng=$longitude',
+        fromJson: (data) =>
+            data is Map ? data as Map<String, dynamic> : <String, dynamic>{},
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          return ApiResponse.error('Backend geocoding timeout');
+        },
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Extract location data from backend response
+        final result = <String, String>{
+          'city': data['city']?.toString() ?? 
+                  data['town']?.toString() ?? 
+                  data['village']?.toString() ?? '',
+          'state': data['state']?.toString() ?? 
+                   data['region']?.toString() ?? '',
+          'country': data['country']?.toString() ?? '',
+          'address': data['display_name']?.toString() ?? 
+                     data['formatted']?.toString() ?? '',
+        };
+        
+        debugPrint('✅ Backend geocoding success: ${result['city']}');
+        return ApiResponse.success(result, statusCode: response.statusCode);
+      }
+      
+      return ApiResponse.error(
+        response.error ?? 'Backend geocoding failed',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      debugPrint('❌ Backend geocoding error: $e');
+      return ApiResponse.error('Backend geocoding error: ${e.toString()}');
+    }
+  }
+
+  // ============================================
   // LOCATION UTILITIES
   // ============================================
 
-    /// Get current device location
   Future<Position?> getCurrentLocation() async {
     try {
-      // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -267,12 +312,11 @@ class LocationService {
         return null;
       }
 
-      // Get position with timeout
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 30), // ✅ Add 30 second timeout
+        desiredAccuracy: LocationAccuracy.medium, // ✅ Changed from high
+        timeLimit: const Duration(seconds: 30), // ✅ Increased timeout
       ).timeout(
-        Duration(seconds: 30), // ✅ Additional timeout wrapper
+        const Duration(seconds: 30),
         onTimeout: () {
           debugPrint('❌ Location request timed out');
           throw TimeoutException('Location request timed out after 30 seconds');
@@ -289,13 +333,13 @@ class LocationService {
     }
   }
 
-  /// Convert coordinates to address
+  /// Convert coordinates to address using device geocoding
   Future<String?> getAddressFromCoordinates(LatLng location) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
         location.latitude,
         location.longitude,
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
@@ -305,11 +349,25 @@ class LocationService {
       return null;
     } catch (e) {
       debugPrint('❌ Error getting address: $e');
+      
+      // Fallback to backend
+      try {
+        final response = await reverseGeocode(
+          latitude: location.latitude,
+          longitude: location.longitude,
+        );
+        
+        if (response.isSuccess && response.data != null) {
+          return response.data!['address'];
+        }
+      } catch (backendError) {
+        debugPrint('❌ Backend address lookup also failed: $backendError');
+      }
+      
       return null;
     }
   }
 
-  /// Convert address to coordinates
   Future<LatLng?> getCoordinatesFromAddress(String address) async {
     try {
       List<Location> locations = await locationFromAddress(address);
@@ -326,27 +384,24 @@ class LocationService {
     }
   }
 
-  /// Calculate distance between two points in kilometers
   double calculateDistance(LatLng from, LatLng to) {
     return Geolocator.distanceBetween(
       from.latitude,
       from.longitude,
       to.latitude,
       to.longitude,
-    ) / 1000; // Convert to km
+    ) / 1000;
   }
 
-  /// Check if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
   }
 
-  /// Listen to location changes
   Stream<Position> getPositionStream() {
     return Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters
+        distanceFilter: 10,
       ),
     );
   }

@@ -1,3 +1,7 @@
+// ==================== models/vehicle_type.dart ====================
+// VEHICLE TYPE MODEL - ✅ FINAL VERSION
+// Handles both base_fare and base_price from backend
+
 import 'package:flutter/material.dart';
 
 class VehicleType {
@@ -50,6 +54,7 @@ class VehicleType {
   String get formattedMinimumFare => formatPrice(minimumFare);
 
   // From JSON (Django API response)
+  // ✅ FIXED: Now handles both 'base_price' (backend) and 'base_fare' (legacy)
   factory VehicleType.fromJson(Map<String, dynamic> json) {
     return VehicleType(
       id: json['id']?.toString() ?? '',
@@ -57,7 +62,10 @@ class VehicleType {
       description: json['description'] ?? '',
       icon: _getIconFromString(json['icon_name'] ?? json['id'] ?? 'car'),
       color: _getColorFromString(json['color'] ?? '#0066FF'),
-      baseFare: _parseDouble(json['base_fare']) ?? 500.0,
+      // ✅ CHANGED: Check 'base_price' first (backend), then 'base_fare' (fallback)
+      baseFare: _parseDouble(json['base_price']) ?? 
+                _parseDouble(json['base_fare']) ?? 
+                500.0,
       pricePerKm: _parseDouble(json['price_per_km']) ?? 100.0,
       pricePerMinute: _parseDouble(json['price_per_minute']) ?? 10.0,
       minimumFare: _parseDouble(json['minimum_fare']) ?? 800.0,
@@ -100,20 +108,25 @@ class VehicleType {
     switch (iconName.toLowerCase()) {
       case 'bike':
       case 'motorcycle':
+      case 'two_wheeler':
         return Icons.two_wheeler;
       case 'keke':
       case 'tricycle':
       case 'rickshaw':
+      case 'electric_rickshaw':
         return Icons.electric_rickshaw;
       case 'car':
       case 'swift_go':
+      case 'directions_car':
         return Icons.directions_car;
       case 'suv':
       case 'van':
       case 'swift_xl':
+      case 'airport_shuttle':
         return Icons.airport_shuttle;
       case 'comfort':
       case 'swift_comfort':
+      case 'drive_eta':
         return Icons.drive_eta;
       default:
         return Icons.directions_car;

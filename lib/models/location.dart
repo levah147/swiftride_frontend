@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class SavedLocation {
   final String id;
   final String? userPhone;
-  final String? label; // Custom label (e.g., 'Gym', 'Mom's House')
+  final String? label; // Custom label (e.g., 'Gym', 'Mom's House') 
   final String locationType; // 'home', 'work', 'other'
   final String locationTypeDisplay; // 'Home', 'Work', 'Other'
   final String address;

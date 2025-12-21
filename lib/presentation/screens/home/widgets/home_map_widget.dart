@@ -1,6 +1,6 @@
 // ==================== widgets/home_map_widget.dart ====================
 // HOME MAP WIDGET - Google Maps component for home screen
-// Displays user location and allows pin placement
+// Displays user location and allows pin placement 
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';

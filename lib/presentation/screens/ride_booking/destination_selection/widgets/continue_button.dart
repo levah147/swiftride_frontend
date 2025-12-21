@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../../constants/app_dimensions.dart';
 
 class ContinueButton extends StatelessWidget {
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed; // Made nullable for disabled state
   final String text;
   final bool isLoading;
 
